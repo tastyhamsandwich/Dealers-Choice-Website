@@ -3,6 +3,7 @@ import "./styles.module.css";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import NavBar from "@comps/NavBar";
+import { AuthProvider } from '@/contexts/AuthContext';
 
 //import AuthProvider from '~/lib/hooks/AuthProvider';
 
@@ -18,8 +19,10 @@ export default function RootLayout({ children }
     return (
       <html lang="en" className={`${GeistSans.variable}`}>
         <body>
-          <NavBar />
-          {children}
+          <AuthProvider>
+            <NavBar />
+            {children}
+          </AuthProvider>
         </body>
         
       </html>

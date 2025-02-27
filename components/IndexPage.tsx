@@ -1,5 +1,5 @@
-import CheckoutForm from '../components/checkout'
-import { stripe } from '../lib/stripe'
+import CheckoutForm from '@comps/checkout'
+import { stripe } from '@lib/stripe'
 
 
 
@@ -9,7 +9,7 @@ export async function IndexPage() {
       // Replace this constant with a calculation of the order's amount
       // Calculate the order total on the server to prevent
       // people from directly manipulating the amount on the client
-      return 1400;
+      return 10000;
     };
   
   

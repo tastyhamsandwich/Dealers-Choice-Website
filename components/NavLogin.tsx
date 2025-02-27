@@ -8,15 +8,12 @@ import "./styles.module.css";
 export default function NavLogin() {
     const router = useRouter();
     
-    // Change to non-async function
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         
-        // Use then/catch instead of async/await
         signInAction(formData)
             .then(() => {
-                // Handle success if needed
                 router.refresh();
             })
             .catch(error => {
