@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import { Cameras, Scene } from 'phaser';
 import { Card, Deck, Hand } from '../lib/classes';
 import { HandType, Result } from '../lib/types';
 import { evaluateHand } from '../lib/utils';
@@ -6,10 +6,10 @@ import * as CONSTS from '../lib/constants';
 
 const c = CONSTS;
 
-export class Debug extends Phaser.Scene {
+export class Debug extends Scene {
 
   
-  camera: Phaser.Cameras.Scene2D.Camera | undefined;
+  camera: Cameras.Scene2D.Camera | undefined;
   private deck: any;
   playerCards: any;
   evaluateText: string = '';

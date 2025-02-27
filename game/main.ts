@@ -25,6 +25,12 @@ interface GameConfigWithUser extends Types.Core.GameConfig {
     userData?: IUserData;
 }
 
+// Create a global variable to store user data
+let globalUserData: IUserData | null = null;
+
+// Function to get user data
+export const getUserData = (): IUserData | null => globalUserData;
+
 // Base configuration without user data
 const config: GameConfigWithUser = {
     type: Phaser.AUTO,
@@ -59,11 +65,14 @@ const config: GameConfigWithUser = {
 };
 
 const StartGame = (parent: string, userData: IUserData) => {
-    // Merge the base config with parent and userData
+    // Store user data globally
+    globalUserData = userData;
+    
+    // Merge the base config with parent
     const gameConfig: GameConfigWithUser = {
         ...config,
         parent,
-        userData
+        userData // Still include it in the config as well
     };
     
     return new Game(gameConfig);

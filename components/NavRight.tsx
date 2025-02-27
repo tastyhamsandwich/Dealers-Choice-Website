@@ -3,6 +3,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import NavProfile from './NavProfile';
+import NavLogin from './NavLogin';  // Import the NavLogin component
 
 export default function NavRight() {
     const { user, profile, loading } = useAuth();
@@ -15,9 +16,7 @@ export default function NavRight() {
                 user ? (
                     <NavProfile />
                 ) : (
-                    <div className="auth-buttons">
-                        {/* Login/Register buttons */}
-                    </div>
+                    <NavLogin />  // Use the NavLogin component here
                 )
             )}
         </div>

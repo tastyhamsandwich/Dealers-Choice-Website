@@ -3,19 +3,7 @@ import { Room, Client } from "colyseus.js";
 import * as c from '../lib/constants';
 import Server from '../services/Server';
 import { Card, Deck, Player, Sidepot } from '../lib/classes';
-import { IUserData } from '../main';
-
-// Extend the GameConfig to include userData
-interface GameConfigWithUser extends Types.Core.GameConfig {
-    userData?: IUserData;
-}
-
-// Add type assertion for this.game.config
-declare module 'phaser' {
-    interface Game {
-        config: GameConfigWithUser;
-    }
-}
+import { IUserData, getUserData } from '../../main';
 
 interface SceneUI {
     potText?: Phaser.GameObjects.Text;
@@ -30,6 +18,7 @@ interface SceneUI {
 
 export class PokerGame extends Scene {
     private room: Room | null = null;
+    private userData: IUserData | null = null;
     private gameState: {
         players: any[];
         gamePhase: string;
@@ -46,6 +35,12 @@ export class PokerGame extends Scene {
 
     constructor() {
         super({ key: 'PokerGame' });
+    }
+
+    init() {
+        // Get user data in the init phase
+        this.userData = getUserData();
+        console.log('User data in PokerGame:', this.userData);
     }
 
     preload() {
@@ -79,7 +74,8 @@ export class PokerGame extends Scene {
         try {
             // Connect to room
             this.room = await server.client.joinOrCreate("poker", {
-                name: "Player" // You might want to get this from user input
+                name: this.userData?.display_name || this.userData?.username || "Player",
+                userId: this.userData?.id
             });
 
             // Set up room event listeners
@@ -87,6 +83,7 @@ export class PokerGame extends Scene {
 
             // Create UI elements
             this.createUI();
+            this.createPlayerInfoUI();
 
         } catch (error) {
             console.error("Failed to join room:", error);
@@ -124,13 +121,30 @@ export class PokerGame extends Scene {
     }
 
     private createPlayerInfoUI() {
-        const userData = this.game.config.userData as IUserData;
+        if (!this.userData) return;
         
-        const playerInfoContainer = this.add.container(c.GAME_X_MID, c.GAME_Y_MID - 100);
-
-        const playerAvatar = this.add.image(0, 0, 'playerAvatar');
-        playerAvatar.setScale(0.5);
+        // Create player info display
+        const infoX = 100;
+        const infoY = c.GAME_HEIGHT - 50;
         
+        // Display name
+        const displayName = this.userData.display_name || this.userData.username;
+        this.add.text(infoX, infoY - 40, displayName, {
+            fontSize: '18px',
+            color: '#ffffff'
+        });
+        
+        // Display balance
+        this.add.text(infoX, infoY - 15, `Balance: $${this.userData.balance}`, {
+            fontSize: '16px',
+            color: '#ffffff'
+        });
+        
+        // If you have an avatar image
+        // if (this.userData.avatar) {
+        //     // You would need to preload this image first
+        //     // this.add.image(infoX - 40, infoY - 25, 'playerAvatar').setScale(0.5);
+        // }
     }
 
     private createActionButton(x: number, y: number, action: string): Phaser.GameObjects.Container {

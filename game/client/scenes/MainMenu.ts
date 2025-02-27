@@ -34,7 +34,7 @@ export class MainMenu extends Scene
         }).setOrigin(0.5).setInteractive();
 
         Game.on('pointerdown', () => {
-            this.scene.start('Game');
+            this.scene.start('PokerGame');
         });
 
         const debugButton = this.add.text(c.GAME_WIDTH - 175,50, 'DEBUG', {

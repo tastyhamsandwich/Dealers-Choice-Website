@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { createClient } from '@supaC';
+import { createClient } from '@supaC'; // Ensure this import is correct
 import type { User } from '@supabase/supabase-js';
 
 // Define the profile type
@@ -48,6 +48,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 .single();
                 
             if (error) {
+                console.error('Profile fetch error:', error);
                 if (error.code === 'PGRST116') {
                     // Profile not found, create a default one
                     const defaultProfile = {
@@ -56,14 +57,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         balance: 0
                     };
                     setProfile(defaultProfile);
+                    
+                    // Consider creating this profile in the database here
+                    // await supabase.from('profiles').insert([defaultProfile]);
                 } else {
-                    console.error('Profile fetch error:', error);
+                    setProfile(null);
                 }
-            } else {
+            } else if (data) {
                 setProfile(data);
+            } else {
+                // No data and no error, this is unexpected
+                console.warn('No profile data returned for user:', userId);
+                setProfile(null);
             }
         } catch (error) {
             console.error('Unexpected error fetching profile:', error);
+            setProfile(null);
         } finally {
             setLoading(false);
         }
@@ -80,15 +89,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Sign out function
     const signOut = async () => {
         try {
+            setLoading(true);
             await supabase.auth.signOut();
+            setUser(null);
             setProfile(null);
         } catch (error) {
             console.error('Error signing out:', error);
+        } finally {
+            setLoading(false);
         }
     };
     
     useEffect(() => {
         const setupAuth = async () => {
+            setLoading(true);
+            
             try {
                 // Get initial session
                 const { data: { session }, error } = await supabase.auth.getSession();
@@ -99,37 +114,49 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     return;
                 }
                 
-                if (session) {
-                    const { data: { user }, error: userError } = await supabase.auth.getUser();
-                    
-                    if (userError) {
-                        console.error('User error:', userError);
-                        setLoading(false);
-                        return;
-                    }
-                    
-                    setUser(user);
-                    await fetchProfile(user!.id);
+                if (session?.user) {
+                    setUser(session.user);
+                    await fetchProfile(session.user.id);
                 } else {
+                    setUser(null);
+                    setProfile(null);
                     setLoading(false);
                 }
                 
                 // Set up auth state change listener
                 const { data: { subscription } } = supabase.auth.onAuthStateChange(
-                    async (_event, session) => {
-                        const currentUser = session?.user ?? null;
-                        setUser(currentUser);
+                    async (event, session) => {
+                        console.log('Auth state changed:', event, session?.user?.id);
                         
-                        if (currentUser) {
-                            await fetchProfile(currentUser.id);
-                        } else {
+                        // Handle different auth events
+                        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+                            if (session?.user) {
+                                setLoading(true);
+                                setUser(session.user);
+                                await fetchProfile(session.user.id);
+                            }
+                        } else if (event === 'SIGNED_OUT') {
+                            setUser(null);
                             setProfile(null);
                             setLoading(false);
+                        } else {
+                            // For other events, just update state based on session
+                            const currentUser = session?.user ?? null;
+                            setUser(currentUser);
+                            
+                            if (currentUser) {
+                                await fetchProfile(currentUser.id);
+                            } else {
+                                setProfile(null);
+                                setLoading(false);
+                            }
                         }
                     }
                 );
                 
-                return () => subscription.unsubscribe();
+                return () => {
+                    subscription.unsubscribe();
+                };
             } catch (error) {
                 console.error('Auth setup error:', error);
                 setLoading(false);
@@ -162,4 +189,4 @@ export function useAuth() {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
-} 
+}
