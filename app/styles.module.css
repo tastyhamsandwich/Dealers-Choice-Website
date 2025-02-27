@@ -1,0 +1,239 @@
+.wallet-container {
+    margin: 10px;
+    color: #b9b9b9;
+    font-size: 16pt;
+    font-weight: bold;
+}
+
+.balance {
+    color: #eedd00;
+    font-weight: bold;
+}
+
+.profile-container {
+    position: absolute;
+    left: 82%;
+    top: 100;
+    align-self: right;
+    display: flex;
+    margin: 10px;
+}
+
+.username-container {
+    margin: 10px;
+    font-family: 'Arial Black';
+    font-size: 16pt;
+    color: #000;
+}
+
+.container-container {
+    display: flex;
+    position: sticky;
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: #333;
+    box-shadow: rgba(100,100,100,0.4) 0px 0px 15px 1rem;
+}
+
+.button-signup-container {
+    display: flex;
+    justify-content: space-between;
+    width: 12rem;
+    flex-direction: column;
+    padding-top: 10px;
+    height: min-content;
+}
+
+.login-button {
+    width: 10rem;
+}
+
+.navbar-container {
+    width: 75%;
+    height: 80px;
+}
+
+.navbar {
+    margin-top: 5px;
+    width: auto;
+    color: white;
+    padding: 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+}
+
+.navbar ul li {
+    margin-right: 20px;
+}
+
+.navbar ul li a {
+
+    color: #aaa;
+    text-decoration: none;
+    padding: 10px 15px;
+    border-radius: 3px;
+    display: block;
+    font-size: 24px;
+    text-shadow: 2px 2px 2px #000;
+}
+
+.navbar ul li a:hover {
+    background-color: #575757;
+    color: white;
+    box-shadow: 0px 0px 15px #000;
+    border-radius: 5px;
+    text-decoration:double;
+    text-shadow: 2px 2px 2px #000;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    .navbar ul {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .navbar ul li {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+}
+
+/**
+.login-container {
+    padding-left: 30px;
+    display: inline-block;
+    width: 100%;
+}
+*/
+
+.login-container {
+    padding-left: 30px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: right;
+    
+}
+
+.login-container form {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.login-container input {
+    color: #000;
+    margin: 0 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    box-shadow: 0px 0px 15px #000;
+}
+
+.login-container button {
+    border-color: #004411;
+    margin: 0 10px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: #4caf50;
+    color: white;
+    cursor: pointer;
+}
+
+.login-container button:hover {
+    background-color: #45a049;
+}
+
+.signup-container {
+    display: flex;
+    font-size: 10pt;
+    margin-top: 5px;
+    padding-left: 15px;
+    padding-bottom: 3px;
+    justify-content: center;
+    text-align: center;
+    width: 160px;
+}
+
+.signup-link {
+    color: #4caf50;
+    text-decoration: none;
+    
+    transition:
+        color 0.3s,
+        text-shadow 0.3s;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.signup-link:hover {
+    text-decoration: underline;
+    color: #6fffa6;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+.container-container button {
+
+    color: rgb(221, 221, 221);
+    font-size: 16px;
+    line-height: 16px;
+    padding: 15px;
+    border-radius: 13px;
+    font-family: Verdana, Geneva, sans-serif;
+    font-weight: normal;
+    text-decoration: none;
+    font-style: normal;
+    font-variant: normal;
+    text-transform: none;
+    background-image: radial-gradient(rgb(69, 160, 73) 0%, rgb(99, 229, 104) 100%);
+    box-shadow: #222 5px 5px 15px 5px;
+    border: 2px solid #004411;
+    display: inline-block;
+}
+
+.login-container input:focus {
+    border-color: #000;
+    box-shadow: #000 3px 3px 5px 3px;
+}
+.container-container button:hover {
+    background: #45a049;
+    box-shadow: #000 5px 5px 15px 5px;
+    border: 3px solid #002211;
+    padding: 14px;
+}
+
+.container-container button:active {
+    background: #458833;
+    box-shadow: #444 5px 5px 15px 5px;
+}
+
+@media (max-width: 600px) {
+    .login-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .login-container form {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .login-container input,
+    .login-container button {
+        margin: 10px 0;
+    }
+}

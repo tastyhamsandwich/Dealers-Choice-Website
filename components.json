@@ -5,13 +5,19 @@
   "tsx": true,
   "tailwind": {
     "config": "tailwind.config.ts",
-    "css": "app/globals.css",
+    "css": "app/ui/globals.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils"
+    "components": "@/components/",
+    "utils": "@/lib/utils",
+    "lib": "@/lib",
+    "app": "@/app",
+    "api": "@/app/api/",
+    "hooks": "@/hooks/",
+    "supabase": "@/lib/supabase/",
+    "styles": "@/styles"
   }
 }

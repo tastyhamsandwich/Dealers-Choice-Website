@@ -1,11 +1,13 @@
 "use server";
 
-import { encodedRedirect } from "@/utils/utils";
-import { createClient } from "@/utils/supabase/server";
+import { encodedRedirect } from "@lib/utils";
+import { createClient } from "@supaS";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export const signUpAction = async (formData: FormData) => {
+  console.log(`signUpAction() has been called...`);
+
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
   const supabase = await createClient();
@@ -19,7 +21,7 @@ export const signUpAction = async (formData: FormData) => {
     );
   }
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -28,32 +30,41 @@ export const signUpAction = async (formData: FormData) => {
   });
 
   if (error) {
-    console.error(error.code + " " + error.message);
-    return encodedRedirect("error", "/sign-up", error.message);
+    console.error(`Error has been thrown: \n ${error.code} : ${error.message}`);
+    return encodedRedirect("error", "/signup", error.message);
   } else {
+    console.log(`User has been created successfully... \n${data}`);
     return encodedRedirect(
       "success",
-      "/sign-up",
+      "/dashboard",
       "Thanks for signing up! Please check your email for a verification link.",
     );
   }
 };
 
 export const signInAction = async (formData: FormData) => {
+  console.log(`signInAction() has been called...`);
+
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
-    return encodedRedirect("error", "/sign-in", error.message);
+    console.log(`Error thrown: \n${error}`);
+    return encodedRedirect("error", "/signin", error.message);
   }
 
-  return redirect("/protected");
+  if (data) {
+    console.log(`Data fetched: \n${data}`);
+    // TODO ensure authentication is successful
+  }
+
+  return redirect("/dashboard");
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {
