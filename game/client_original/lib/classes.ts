@@ -1,4 +1,4 @@
-import { isRankOrSuit, isCardName, generateRandomSuit, generateRandomRank, valueToRank } from './utils';
+import { isRankOrSuit, isCardName, generateRandomSuit, generateRandomRank } from './utils';
 import { Suit, Rank, CardName, RankValue, HandType, LastActions, Actions } from './types';
 
 export { Card, Deck, Hand, Player, Round, Sidepot, Table, User }
@@ -398,15 +398,14 @@ class Deck {
 class Hand extends Array {
     cards: HandType | Card[];
     rank: number;
-    winningHand: string;
 
     constructor(cards: HandType | Card[]) {
         super();
         this.cards = cards;
-        this.rank = this.evaluate();
+        this.rank = this.rankCards();
     }
 
-    evaluate = (): number => {
+    rankCards = (): number => {
         const handCards: Card[] = this.cards;
         // Histogram
         // { rank: count }
@@ -420,33 +419,33 @@ class Hand extends Array {
             return hist;
         }, hist);
     
-        // Scored histogram
-        // Descending by count
-        // [ [ rank, count ] ]
-        // scoredHist[x][0] references the rank of the cards (Jacks, Aces, etc.)
-        // scoredHist[x][1] references the number of times that rank appears in a hand
-        
+    // Scored histogram
+    // Descending by count
+    // [ [ rank, count ] ]
+    // scoredHist[x][0] references the rank of the cards (Jacks, Aces, etc.)
+    // scoredHist[x][1] references the number of times that rank appears in a hand
+    
         const scoredHist: (number | undefined)[][] = Object
             .keys(hist)
             .map(rank => [parseInt(rank), hist[rank as unknown as RankValue]])
             .sort((a, b) => (a[1] ?? 0) === (b[1] ?? 0) ? (b[0] ?? 0) - (a[0] ?? 0) : (b[1] ?? 0) - (a[1] ?? 0));
     
         console.log(scoredHist);
-        // Suits
-        // [ suit: count ]
-        
+    // Suits
+    // [ suit: count ]
+    
         const suits = handCards.reduce((suits: number[], card: Card) => {
             suits[card.suitValue()]++;
             return suits;
         }, [0,0,0,0]);
     
-        // Ranked Hand
-        // (descending by rank)
-        // [ index : rank ]
-        
+    // Ranked Hand
+    // (descending by rank)
+    // [ index : rank ]
+    
         const rankedHand = handCards.map(card => card.value).sort((a, b) => a - b);
     
-        // Evaluate for non-histogram based hands and set a flag accordingly, to be used for final evaluation chain
+    // Evaluate for non-histogram based hands and set a flag accordingly, to be used for final evaluation chain
         const isFlush     = suits.indexOf(5) >= 0;
         const isWheel     = rankedHand[4] === 14 && rankedHand[0] === 2;
         const isStraight  = ( rankedHand[4]
@@ -457,13 +456,13 @@ class Hand extends Array {
             rankedHand[1]   - rankedHand[0] === 1
         );
     
-        // Final Evaluation Chain
-        // Starting with Royal Flush and working downwards
-        // Using ternary operators to chain evaluations together
+    // Final Evaluation Chain
+    // Starting with Royal Flush and working downwards
+    // Using ternary operators to chain evaluations together
     
     
-        // High Card
-        const bestHand = (isStraight && isFlush && rankedHand[4] === 14 && !isWheel) ? (10) // Royal Flush
+    // High Card
+        return (isStraight && isFlush && rankedHand[4] === 14 && !isWheel) ? (10) // Royal Flush
             : (isStraight && isFlush) ? (9 + (rankedHand[4] / 100)) // Straight Flush
                 : (scoredHist[0][1] === 4) ? (8 + ((scoredHist[0][0] ?? 0) / 100)) // Four of a Kind
                     : (scoredHist[0][1] === 3 && scoredHist[1][1] === 2) ? (7 + ((scoredHist[0][0] ?? 0) / 100) + ((scoredHist[1][0] ?? 0) / 1000)) // Full House
@@ -473,27 +472,7 @@ class Hand extends Array {
                                     : (scoredHist[0][1] === 2 && scoredHist[1][1] === 2) ? (3 + ((scoredHist[0][0] ?? 0) / 100) + ((scoredHist[1][0] ?? 0) / 1000)) // Two Pair
                                         : (scoredHist[0][1] === 2 && scoredHist[1][1] === 1) ? (2 + ((scoredHist[0][0] ?? 0) / 100)) // One Pair
                                             : (1 + ((scoredHist[0][0] ?? 0) / 100));
-
-        this.winningHand = this.bestHandValueToString(bestHand, scoredHist, rankedHand, handCards, isWheel);
-        return bestHand;
     }
-
-    bestHandValueToString(value: number, scoredHistogram: Array<Array<RankValue | number | undefined>>, rankedHand: RankValue[], handCards: Array<Card>, isWheel: boolean): string {
-        if      (value >= 10) return `Royal Flush`;
-        else if (value >= 9)  return `Straight Flush${isWheel ? ` (Wheel, ${this.capitalize(handCards[0].suit)})` : ` (${rankedHand[0]} - ${rankedHand[4]}, ${this.capitalize(handCards[0].suit)})`}`
-        else if (value >= 8)  return `Four of a Kind (${this.capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s)`;
-        else if (value >= 7)  return `Full House (${this.capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s over ${this.capitalize(valueToRank(scoredHistogram[1][0] as RankValue))}s)`;
-        else if (value >= 6)  return `Flush (${this.capitalize(handCards[0].suit)})`;
-        else if (value >= 5)  return `Straight${isWheel ? ` (Wheel)` : ` (${rankedHand[0]} - ${rankedHand[4]})`}`;
-        else if (value >= 4)  return `Three of a Kind (${this.capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s)`;
-        else if (value >= 3)  return `Two Pair (${this.capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s and ${this.capitalize(valueToRank(scoredHistogram[1][0] as RankValue))}s)`;
-        else if (value >= 2)  return `Pair of ${this.capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s`;
-        else                  return `High Card (${this.capitalize(valueToRank(scoredHistogram[0][0] as RankValue))})`;
-    }
-
-    capitalize(str: string): string {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    } 
 
     valueOf() {
         return this.cards;
@@ -535,10 +514,6 @@ class Hand extends Array {
     sortDescending(): void {
         this.cards.sort((a: Card, b: Card) => b.getValue() - a.getValue());
     }
-    
-    sortAscending(): void {
-        this.cards.sort((a: Card, b: Card) => a.getValue() - b.getValue());
-    }
 
     addCard(deckOrCard: Card | Deck | CardName | null = null): void {
         if (deckOrCard === null) {
@@ -577,13 +552,13 @@ class Player {
     folded: boolean;
     allIn: boolean;
     talked: boolean;
-    context: Phaser.Scene;
+    table: Table;
     cards: Hand;
     bet: number;
     lastAction: LastActions;
     action: Actions;
 
-    constructor(playerName: string, chips = 0, context: Phaser.Scene)
+    constructor(playerName: string, chips = 0, table: Table)
     {
         this.username = playerName;
         this.userID = this.generateNewUserID();
@@ -592,7 +567,7 @@ class Player {
         this.folded = false;
         this.allIn = false;
         this.talked = false;
-        this.context = context;
+        this.table = table; //Circular reference to allow reference back to parent object.
         this.cards = new Hand([]);
     }
 
@@ -882,13 +857,6 @@ class Table {
  * @class
  * @param username - The username of the user.
  * @param email - The email of the user.
- * @param password - The password of the user.
- * @param fName - The first name of the user.
- * @param lName - The last name of the user.
- * @param dob - The date of birth of the user.
- * @param addStreet - The street address of the user.
- * @param addCity - The city of the user.
- * @param addState - The state of the user.
  */
 class User {
     userId: number;
@@ -896,7 +864,7 @@ class User {
     displayName: string;
     email: string;
     password: string;
-    personalDetails?: {
+    personalDetails: {
         firstName: string;
         lastName: string;
         dateOfBirth: Date;
@@ -910,58 +878,39 @@ class User {
         phoneNumber: string;
         gender: string;
     }
-    balance: number;
+    wallet: number;
+    accountChips: number;
 
     constructor(
         username: string,
         email: string,
         password: string,
-        fName?: string,
-        lName?: string,
-        dob?: Date,
-        addStreet?: string,
-        addCity?: string,
-        addState?: string,
-        addZip?: string,
-        country?: string,
-        phone?: string,
-        gender?: string,
+        fName: string,
+        lName: string,
+        dob: Date,
+        addStreet: string,
+        addCity: string,
+        addState: string,
+        addZip: string,
+        country: string,
+        phone: string,
+        gender: string,
         displayName = username
     ) {
         this.username = username;
         this.displayName = displayName;
         this.email = email;
         this.password = password;
-        if (fName) {
-            this.personalDetails!.firstName = fName;
-        }
-        if (lName) {
-            this.personalDetails!.lastName = lName;
-        }
-        if (dob) {
-            this.personalDetails!.dateOfBirth = dob;
-        }
-        if (addStreet) {    
-            this.personalDetails!.address.street = addStreet;
-        }
-        if (addCity) {
-            this.personalDetails!.address.city = addCity;
-        }
-        if (addState) {
-            this.personalDetails!.address.state = addState;
-        }
-        if (addZip) {
-            this.personalDetails!.address.zip = addZip;
-        }
-        if (country) {
-            this.personalDetails!.country = country;
-        }
-        if (phone) {
-            this.personalDetails!.phoneNumber = phone;
-        }
-        if (gender) {
-            this.personalDetails!.gender = gender;
-        }
+        this.personalDetails.firstName = fName;
+        this.personalDetails.lastName = lName;
+        this.personalDetails.dateOfBirth = dob;
+        this.personalDetails.address.street = addStreet;
+        this.personalDetails.address.city = addCity;
+        this.personalDetails.address.state = addState;
+        this.personalDetails.address.zip = addZip;
+        this.personalDetails.country = country;
+        this.personalDetails.phoneNumber = phone;
+        this.personalDetails.gender = gender;
     }
 
     getDisplayName(): string {

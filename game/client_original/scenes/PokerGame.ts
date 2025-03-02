@@ -1,8 +1,9 @@
-import { Scene } from 'phaser';
+import { Scene, Types } from 'phaser';
 import { Room, Client } from "colyseus.js";
 import * as c from '../lib/constants';
 import Server from '../services/Server';
 import { Card, Deck, Player, Sidepot } from '../lib/classes';
+import { IUserData, getUserData } from '../../main';
 
 interface SceneUI {
     potText?: Phaser.GameObjects.Text;
@@ -17,6 +18,7 @@ interface SceneUI {
 
 export class PokerGame extends Scene {
     private room: Room | null = null;
+    private userData: IUserData | null = null;
     private gameState: {
         players: any[];
         gamePhase: string;
@@ -35,10 +37,16 @@ export class PokerGame extends Scene {
         super({ key: 'PokerGame' });
     }
 
+    init() {
+        // Get user data in the init phase
+        this.userData = getUserData();
+        console.log('User data in PokerGame:', this.userData);
+    }
+
     preload() {
         // DEF Load all necessary assets
-        this.load.image('poker_table', 'assets/table.png');
-        this.load.image('cardBack', 'assets/cardback.png');
+        this.load.image('poker_table', './public/assets/table.png');
+        this.load.image('cardBack', './public/assets/cardback.png');
         
         // DEF Load card assets
         const suits = ['H', 'D', 'C', 'S'];
@@ -47,14 +55,14 @@ export class PokerGame extends Scene {
         suits.forEach(suit => {
             values.forEach(value => {
                 const key = `${value}${suit[0].toUpperCase()}`;
-                this.load.image(key, `assets/cards_en/${key}.png`);
+                this.load.image(key, `./public/assets/cards_en/${key}.png`);
             });
         });
 
         // DEF Load UI elements
-        this.load.image('button', 'assets/buttons/button_blue_up.png');
-        this.load.image('chipSpade', 'assets/chip_spade.png');
-        this.load.image('chipDiamond', 'assets/chip_diamond.png');
+        this.load.image('button', './public/assets/buttons/button_blue_up.png');
+        this.load.image('chipSpade', './public/assets/chip_spade.png');
+        this.load.image('chipDiamond', './public/assets/chip_diamond.png');
     }
 
     async create(data: { server: Server }) {
@@ -66,7 +74,8 @@ export class PokerGame extends Scene {
         try {
             // Connect to room
             this.room = await server.client.joinOrCreate("poker", {
-                name: "Player" // You might want to get this from user input
+                name: this.userData?.display_name || this.userData?.username || "Player",
+                userId: this.userData?.id
             });
 
             // Set up room event listeners
@@ -74,6 +83,7 @@ export class PokerGame extends Scene {
 
             // Create UI elements
             this.createUI();
+            this.createPlayerInfoUI();
 
         } catch (error) {
             console.error("Failed to join room:", error);
@@ -108,6 +118,33 @@ export class PokerGame extends Scene {
             );
             this.sceneUI.actionButtons![action] = button;
         });
+    }
+
+    private createPlayerInfoUI() {
+        if (!this.userData) return;
+        
+        // Create player info display
+        const infoX = 100;
+        const infoY = c.GAME_HEIGHT - 50;
+        
+        // Display name
+        const displayName = this.userData.display_name || this.userData.username;
+        this.add.text(infoX, infoY - 40, displayName, {
+            fontSize: '18px',
+            color: '#ffffff'
+        });
+        
+        // Display balance
+        this.add.text(infoX, infoY - 15, `Balance: $${this.userData.balance}`, {
+            fontSize: '16px',
+            color: '#ffffff'
+        });
+        
+        // If you have an avatar image
+        // if (this.userData.avatar) {
+        //     // You would need to preload this image first
+        //     // this.add.image(infoX - 40, infoY - 25, 'playerAvatar').setScale(0.5);
+        // }
     }
 
     private createActionButton(x: number, y: number, action: string): Phaser.GameObjects.Container {
@@ -230,11 +267,11 @@ export class PokerGame extends Scene {
     }
 
     private updatePlayerCards(player: Player, position: {x: number, y: number}, showCards: boolean) {
-        player.cards.forEach((card: Card, i: number) => {
+        player.cards.forEach((card: string, i: number) => {
             const cardImage = this.add.sprite(
                 position.x + (i * 30) - 15, 
                 position.y, 
-                showCards ? card.name : 'cardBack'
+                showCards ? card : 'cardBack'
             ).setScale(0.5);
         });
     }

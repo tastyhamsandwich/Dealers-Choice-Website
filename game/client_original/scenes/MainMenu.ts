@@ -1,14 +1,14 @@
-import { Scene, GameObjects } from "phaser";
-import * as CONSTS from "../lib/constants";
-import type Server from "../services/Server";
+import { Scene, GameObjects } from 'phaser';
+import * as CONSTS from '../lib/constants';
+import type Server from '../services/Server';
 
 const c = CONSTS;
 
 export class MainMenu extends Scene
 {
-    background: GameObjects.Image;
-    logo: GameObjects.Image;
-    title: GameObjects.Text;
+    background!: GameObjects.Image;
+    logo!: GameObjects.Image;
+    title!: GameObjects.Text;
 
     constructor ()
     {
@@ -34,16 +34,6 @@ export class MainMenu extends Scene
         }).setOrigin(0.5).setInteractive();
 
         Game.on('pointerdown', () => {
-            this.scene.start('SingleGame');
-        });
-
-        const Multi = this.add.text(c.GAME_X_MID, 660, 'Multiplayer', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        }).setOrigin(0.5).setInteractive();
-
-        Multi.on('pointerdown', () => {
             this.scene.start('PokerGame');
         });
 

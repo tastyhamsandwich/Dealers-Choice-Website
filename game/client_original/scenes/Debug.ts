@@ -1,4 +1,4 @@
-import 'phaser';
+import { Cameras, Scene } from 'phaser';
 import { Card, Deck, Hand } from '../lib/classes';
 import { HandType, Result } from '../lib/types';
 import { evaluateHand } from '../lib/utils';
@@ -6,18 +6,18 @@ import * as CONSTS from '../lib/constants';
 
 const c = CONSTS;
 
-export class Debug extends Phaser.Scene {
+export class Debug extends Scene {
+
+  
+  camera: Cameras.Scene2D.Camera | undefined;
+  private deck: any;
+  playerCards: any;
+  evaluateText: string = '';
+  private testCaseNum: number = 0;
+
   constructor() {
     super({key: 'Debug'});
   }
-  
-  camera: Phaser.Cameras.Scene2D.Camera = this.cameras.main;
-  private deck: Deck = new Deck();
-  playerCards: Hand = new Hand([]);
-  evaluateText: string = '';
-  private testCaseNum: number = 0;
-  private evalMsg: Phaser.GameObjects.Text = new Phaser.GameObjects.Text(this,1,1,'',{});
-
   create() {
 
     this.camera = this.cameras.main;
@@ -41,8 +41,8 @@ export class Debug extends Phaser.Scene {
       this.playerCards = new Hand(cards);
     });
 
-    this.evalMsg = this.add.text(c.GAME_X_MID, 200, this.evaluateText, {
-      fontFamily: 'Arial Black', fontSize: 50, color: '#000000',
+    const evalMsg = this.add.text(c.GAME_X_MID, 200, this.evaluateText, {
+      fontFamily: 'Arial Black', fontSize: 50, color: '#888',
       stroke: '#FFFFFF', strokeThickness: 2,
       align: 'center'
     })
@@ -53,9 +53,10 @@ export class Debug extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive();
 
     evalButton.on('pointerdown', () => {
-      const evalResponse: Result = evaluateHand(this.playerCards);
-      this.evaluateText = `${evalResponse.message} | ${evalResponse.rank}`;
+      const evalResponse = evaluateHand(this.playerCards);
+      this.evaluateText = evalResponse.message;
       console.log(`Hand: ${evalResponse.message} | ${evalResponse.rank}`);
+      evalMsg.text = this.evaluateText;
     });
 
     const shuffleButton = this.add.text(c.GAME_X_MID, 350, 'SHUFFLE', {
@@ -85,7 +86,7 @@ export class Debug extends Phaser.Scene {
 }
 
   update() {
-    this.evalMsg.text = this.evaluateText;
+    //evalMsg.text = this.evaluateText;
     
     //this.deck.shuffleDeck();
 

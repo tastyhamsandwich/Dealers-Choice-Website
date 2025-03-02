@@ -2,126 +2,100 @@ import { Suit, Rank, RankCapitalized, CardName, RankValue, HandType, Board, Resu
 import * as CONSTS from './constants';
 import { Card, Hand } from './classes';
 
-/**
- * Gets the card name
- * @param {Suit} suit The suit of the card
- * @param {Rank} rank The rank of the card
- * @returns {string} The card name
- */
 export function getCardName(suit: Suit, rank: Rank): string {
-    let r, s = '';
+  let r, s = '';
 
-    switch (suit) {
-        case 'hearts'   : s = 'H'; break;
-        case 'diamonds' : s = 'D'; break;
-        case 'clubs'    : s = 'C'; break;
-        case 'spades'   : s = 'S'; break;
-    }
+  switch (suit) {
+    case 'hearts'   : s = 'H'; break;
+    case 'diamonds' : s = 'D'; break;
+    case 'clubs'    : s = 'C'; break;
+    case 'spades'   : s = 'S'; break;
+  }
 
-    switch (rank) {
-        case 'ace'    : r   = 'A'; break;
-        case 'two'    : r   = '2'; break;
-        case 'three'  : r   = '3'; break;
-        case 'four'   : r   = '4'; break;
-        case 'five'   : r   = '5'; break;
-        case 'six'    : r   = '6'; break;
-        case 'seven'  : r   = '7'; break;
-        case 'eight'  : r   = '8'; break;
-        case 'nine'   : r   = '9'; break;
-        case 'ten'    : r   = 'T'; break;
-        case 'jack'   : r   = 'J'; break;
-        case 'queen'  : r   = 'Q'; break;
-        case 'king'   : r   = 'K'; break;
-    }
+  switch (rank) {
+    case 'ace'    : r   = 'A'; break;
+    case 'two'    : r   = '2'; break;
+    case 'three'  : r   = '3'; break;
+    case 'four'   : r   = '4'; break;
+    case 'five'   : r   = '5'; break;
+    case 'six'    : r   = '6'; break;
+    case 'seven'  : r   = '7'; break;
+    case 'eight'  : r   = '8'; break;
+    case 'nine'   : r   = '9'; break;
+    case 'ten'    : r   = 'T'; break;
+    case 'jack'   : r   = 'J'; break;
+    case 'queen'  : r   = 'Q'; break;
+    case 'king'   : r   = 'K'; break;
+  }
 
-    return r + s;
+  return r + s;
 }
 
-/**
- * Type-Guard function, checks if the value is a card name
- * @param {any} value The value to check
- * @returns {boolean} True if the value is a card name, false otherwise
- */
+// Type-Guard function to ensure parameter is of type CardName
 export function isCardName(value: any): value is CardName {
-    const cardNames: CardName[] = [
+  const cardNames: CardName[] = [
     'AH', '2H', '3H', '4H', '5H', '6H', '7H', '8H', '9H', 'TH', 'JH', 'QH', 'KH',
     'AD', '2D', '3D', '4D', '5D', '6D', '7D', '8D', '9D', 'TD', 'JD', 'QD', 'KD',
     'AC', '2C', '3C', '4C', '5C', '6C', '7C', '8C', '9C', 'TC', 'JC', 'QC', 'KC',
     'AS', '2S', '3S', '4S', '5S', '6S', '7S', '8S', '9S', 'TS', 'JS', 'QS', 'KS'
-    ];
-    return cardNames.includes(value);
+  ];
+  return cardNames.includes(value);
 }
 
-/**
- * Type-Guard function, checks if the value is a rank or suit
- * @param {any} value The value to check
- * @returns {boolean} True if the value is a rank or suit, false otherwise
- */
+// Type-Guard function to ensure parameter is of type Rank or Suit
 export function isRankOrSuit(value: any): value is Rank | Suit {
-    const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
-    const ranks: Array<Rank | RankValue> = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
-    
-    return suits.includes(value) || ranks.includes(value);
+  const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+  const ranks: Array<Rank | RankValue> = ['ace', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+  
+  return suits.includes(value) || ranks.includes(value);
 }
 
-/**
- * Generates a random suit
- * @returns {Suit} A random suit
- */
 export function generateRandomSuit(): Suit {
     const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
     return suits[Math.floor(Math.random() * suits.length)];
-}
+  }
 
-/**
- * Generates a random rank
- * @returns {Rank} A random rank
- */
 export function generateRandomRank(): Rank {
     const ranks: Rank[] = ['two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'jack', 'queen', 'king', 'ace'];
     return ranks[Math.floor(Math.random() * ranks.length)];
-}
+  }
 
-/**
- * Generates a random hand of 5 cards
- * @returns {HandType} A random hand of 5 cards
- */
 export function generateRandomHand(): HandType {
     const hand: HandType = [];
     for (let i = 0; i < 5; i++) {
-        const card = new Card(generateRandomRank(), generateRandomSuit())
-        hand.push(card);
+      const card = new Card(generateRandomRank(), generateRandomSuit())
+      hand.push(card);
     }
     return hand;
-}
+  }
 
-/**
- * Converts a numerical card rank to its corresponding string representation.
- * @param value Number between 2-14 or 100, indicating rank (or wild card)
- * @param capitalize Boolean value to indicate if return value should be capitalized
- * @returns A string with the written rank of the card rank input.
- */
+  /**
+   * Converts a numerical card rank to its corresponding string representation.
+   * @param value Number between 2-14 or 100, indicating rank (or wild card)
+   * @param capitalize Boolean value to indicate if return value should be capitalized
+   * @returns A string with the written rank of the card rank input.
+   */
 export function valueToRank(value: RankValue, capitalize = false): Rank | RankCapitalized {
     switch (value) {
-        case 2:   return (capitalize) ? 'Two'   : 'two';
-        case 3:   return (capitalize) ? 'Three' : 'three';
-        case 4:   return (capitalize) ? 'Four'  : 'four';
-        case 5:   return (capitalize) ? 'Five'  : 'five';
-        case 6:   return (capitalize) ? 'Six'   : 'six';
-        case 7:   return (capitalize) ? 'Seven' : 'seven';
-        case 8:   return (capitalize) ? 'Eight' : 'eight';
-        case 9:   return (capitalize) ? 'Nine'  : 'nine';
-        case 10:  return (capitalize) ? 'Ten'   : 'ten';
-        case 11:  return (capitalize) ? 'Jack'  : 'jack';
-        case 12:  return (capitalize) ? 'Queen' : 'queen';
-        case 13:  return (capitalize) ? 'King'  : 'king';
-        case 14:  return (capitalize) ? 'Ace'   : 'ace';
-        case 100: return (capitalize) ? 'Wild'  : 'wild';
-        default: throw new Error(`Invalid rank value: ${value}`);
+      case 2:   return (capitalize) ? 'Two'   : 'two';
+      case 3:   return (capitalize) ? 'Three' : 'three';
+      case 4:   return (capitalize) ? 'Four'  : 'four';
+      case 5:   return (capitalize) ? 'Five'  : 'five';
+      case 6:   return (capitalize) ? 'Six'   : 'six';
+      case 7:   return (capitalize) ? 'Seven' : 'seven';
+      case 8:   return (capitalize) ? 'Eight' : 'eight';
+      case 9:   return (capitalize) ? 'Nine'  : 'nine';
+      case 10:  return (capitalize) ? 'Ten'   : 'ten';
+      case 11:  return (capitalize) ? 'Jack'  : 'jack';
+      case 12:  return (capitalize) ? 'Queen' : 'queen';
+      case 13:  return (capitalize) ? 'King'  : 'king';
+      case 14:  return (capitalize) ? 'Ace'   : 'ace';
+      case 100: return (capitalize) ? 'Wild'  : 'wild';
+      default: throw new Error(`Invalid rank value: ${value}`);
     }
-}
+  }
 
-/** 
+/**
  * Takes in an array of Card objects and evaluates the best possible poker hand that can be made.
  * @param {Hand} hand An array of Card objects.
  * @returns {Object} { rank: number, message: string }
@@ -146,8 +120,8 @@ export function evaluateHand(hand: Hand): Result {
   // Scored histogram
   // Descending by count
   // [ [ rank, count ] ]
-  // scoredHistogram[x][0] references the rank of the cards (Jacks, Aces, etc.)
-  // scoredHistogram[x][1] references the number of times that rank appears in a hand
+  // scoredHistogram[x][0] references the rank of the cards (Jacks, Aces, etc)
+  // scoredHistogram[x][1] refernces the number of times that rank appears in a hand
 
   const scoredHistogram = Object
     .keys(histogram)
@@ -184,9 +158,9 @@ export function evaluateHand(hand: Hand): Result {
   // Starting with Royal Flush and working downwards
   // Using ternary operators to chain evaluations together
 
-  const bestHandObject: Result = {
-    rank: 0,
-    message: ''
+  let bestHandObject: Result = {
+    message: '',
+    rank: 0
   }
 
 
@@ -204,41 +178,22 @@ export function evaluateHand(hand: Hand): Result {
   :                                                                 (1   + ((scoredHistogram[0][0] ?? 0) / 100));
 
 
-  bestHandObject.message = bestHandValueToString(bestHandObject.rank, scoredHistogram as Array<Array<RankValue | number>>, rankedHand, handCards, isWheel);
+  bestHandObject.message = bestHandValueToString(bestHandObject.rank, scoredHistogram as Array<Array<RankValue | number>>, rankedHand, handCards, isWheel, isStraight, isFlush);
   return bestHandObject;
 }
 
-/** 
- * Capitalizes the first letter of the provided string, intended for single word strings
- * @param {string} str The string to capitalize
- * @returns {string} The capitalized string
- */
+// Capitalize first letter of the provided string, intended for single word strings
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-/** 
- * Iterates over the board array and yields each card in the order of the board
- * @param {Board} board The board array to iterate over
- * @returns {IterableIterator<Card[]>} An iterator of the board cards
- */
 export function* iterateBoard(board: Board): IterableIterator<Card[]> {
   yield*  board.flops;
   yield   board.turns;
   yield   board.rivers;
 }
 
-
-/** 
- * Converts the numerical value of the best hand to a string representation
- * @param {number} value The numerical value of the best hand
- * @param {Array<Array<RankValue | number>>} scoredHistogram The scored histogram of the hand
- * @param {RankValue[]} rankedHand The ranked hand of the hand  
- * @param {Array<Card>} handCards The hand cards of the hand
- * @param {boolean} isWheel The flag indicating if the hand is a wheel
- * @returns {string} The string representation of the best hand
- */
-function bestHandValueToString(value: number, scoredHistogram: Array<Array<RankValue | number>>, rankedHand: RankValue[], handCards: Array<Card>, isWheel: boolean): string {
+function bestHandValueToString(value: number, scoredHistogram: Array<Array<RankValue | number>>, rankedHand: RankValue[], handCards: Array<Card>, isWheel: boolean, isStraight: boolean, isFlush: boolean): string {
   if      (value >= 10) return `Royal Flush`;
   else if (value >= 9)  return `Straight Flush${isWheel ? ` (Wheel, ${capitalize(handCards[0].suit)})` : ` (${rankedHand[0]} - ${rankedHand[4]}, ${capitalize(handCards[0].suit)})`}`
   else if (value >= 8)  return `Four of a Kind (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}'s)`;
@@ -251,22 +206,10 @@ function bestHandValueToString(value: number, scoredHistogram: Array<Array<RankV
   else                  return `High Card (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))})`;
 }
 
-/** 
- * Sorts the provided numbers in descending order
- * @param {number} a The first number to compare
- * @param {number} b The second number to compare
- * @returns {number} The sorted number
- */
 export function sortNumber(a, b) {
   return b - a;
 }
 
-/** 
- * Ranks the kickers of the provided hand
- * @param {string} ranks The ranks of the hand
- * @param {number} noOfCards The number of cards in the hand
- * @returns {number} The ranked kicker
- */
 export function rankKickers(ranks, noOfCards) {
   let kickerRank: number = 0.0000;
   let myRanks: any[] = [];
@@ -300,13 +243,6 @@ export function rankKickers(ranks, noOfCards) {
   return kickerRank;
 }
 
-/**
- * Ranks the provided hand
- * @param {Hand} hand The hand to rank
- * @returns {Hand} The ranked hand
- * @property {number} rank The rank of the hand
- * @property {string} message The message of the hand
- */
 export function rankHand(hand) {
   let myResult = evaluateHand(hand);
   hand.rank = myResult.rank;
@@ -315,11 +251,6 @@ export function rankHand(hand) {
   return hand;
 }
 
-/**
- * Progresses the game state
- * @param {Table} table The table to progress
- * @returns {void}
- */
 export function progress(table) {
   let i;
   table.eventEmitter.emit( "turn" );

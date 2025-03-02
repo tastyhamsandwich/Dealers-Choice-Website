@@ -1,8 +1,8 @@
+import Phaser from 'phaser';
 import { isRankOrSuit, isCardName, generateRandomSuit, generateRandomRank, valueToRank } from './utils';
 import { Suit, Rank, CardName, RankValue, HandType, LastActions, Actions } from './types';
 
 export { Card, Deck, Hand, Player, Round, Sidepot, Table, User }
-
 
 interface Stringable {
     toString: () => string;

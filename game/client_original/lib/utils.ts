@@ -241,13 +241,13 @@ export function* iterateBoard(board: Board): IterableIterator<Card[]> {
 function bestHandValueToString(value: number, scoredHistogram: Array<Array<RankValue | number>>, rankedHand: RankValue[], handCards: Array<Card>, isWheel: boolean): string {
   if      (value >= 10) return `Royal Flush`;
   else if (value >= 9)  return `Straight Flush${isWheel ? ` (Wheel, ${capitalize(handCards[0].suit)})` : ` (${rankedHand[0]} - ${rankedHand[4]}, ${capitalize(handCards[0].suit)})`}`
-  else if (value >= 8)  return `Four of a Kind (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}'s)`;
-  else if (value >= 7)  return `Full House (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}'s over ${capitalize(valueToRank(scoredHistogram[1][0] as RankValue))}'s)`;
+  else if (value >= 8)  return `Four of a Kind (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s)`;
+  else if (value >= 7)  return `Full House (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s over ${capitalize(valueToRank(scoredHistogram[1][0] as RankValue))}s)`;
   else if (value >= 6)  return `Flush (${capitalize(handCards[0].suit)})`;
   else if (value >= 5)  return `Straight${isWheel ? ` (Wheel)` : ` (${rankedHand[0]} - ${rankedHand[4]})`}`;
-  else if (value >= 4)  return `Three of a Kind (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}'s)`;
-  else if (value >= 3)  return `Two Pair (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}'s and ${capitalize(valueToRank(scoredHistogram[1][0] as RankValue))}'s)`;
-  else if (value >= 2)  return `Pair of ${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}'s`;
+  else if (value >= 4)  return `Three of a Kind (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s)`;
+  else if (value >= 3)  return `Two Pair (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s and ${capitalize(valueToRank(scoredHistogram[1][0] as RankValue))}s)`;
+  else if (value >= 2)  return `Pair of ${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))}s`;
   else                  return `High Card (${capitalize(valueToRank(scoredHistogram[0][0] as RankValue))})`;
 }
 

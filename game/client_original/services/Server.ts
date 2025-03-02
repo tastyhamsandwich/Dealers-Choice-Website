@@ -1,6 +1,6 @@
 import { Client } from 'colyseus.js';
 import Phaser from 'phaser';
-import LocalGameState from '../../server/lib/LocalGameState';
+import LocalGameState from '../../utils/LocalGameState';
 
 export default class Server {
 
