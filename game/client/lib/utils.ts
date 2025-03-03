@@ -388,3 +388,18 @@ export function progress(table) {
     }
   }
 }
+
+/**
+ * Gets the remaining elements from the collection
+ * @param {Array} collection The collection to get the remaining elements from
+ * @param {Array} extractedElements The elements to extract from the collection
+ * @returns {Array} The remaining elements from the collection
+ */
+export function getRemainingElements(collection, extractedElements) {
+  if (!Array.isArray(collection) || !Array.isArray(extractedElements)) {
+    throw new Error("Both arguments must be arrays.");
+  }
+
+  const extractedSet = new Set(extractedElements);
+  return collection.filter(element => !extractedSet.has(element));
+}

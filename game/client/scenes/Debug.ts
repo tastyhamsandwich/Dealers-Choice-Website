@@ -11,17 +11,13 @@ export class Debug extends Phaser.Scene {
     super({key: 'Debug'});
   }
   
-  camera: Phaser.Cameras.Scene2D.Camera = this.cameras.main;
   private deck: Deck = new Deck();
   playerCards: Hand = new Hand([]);
   evaluateText: string = '';
   private testCaseNum: number = 0;
-  private evalMsg: Phaser.GameObjects.Text = new Phaser.GameObjects.Text(this,1,1,'',{});
+  private evalMsg: Phaser.GameObjects.Text;
 
   create() {
-
-    this.camera = this.cameras.main;
-    this.camera.setBackgroundColor(0x000000);
 
     this.deck = new Deck();
     this.deck.shuffleDeck();

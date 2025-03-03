@@ -408,30 +408,34 @@ class Hand extends Array {
 
     evaluate = (): number => {
         const handCards: Card[] = this.cards;
-        // Histogram
-        // { rank: count }
-    
+        
+        // Check if hand is empty
+        if (!handCards || handCards.length === 0) {
+            this.winningHand = "Empty Hand";
+            return 0; // Return lowest possible rank
+        }
+        
         // Initialize empty histogram object
         const hist: {[key in RankValue]?: number} = {};
-    
+        
         // Iterate over cards in hand array and increment counter for each RankValue present
         handCards.reduce((hist: {[key in RankValue]?: number}, card: Card) => {
             hist[card.value as RankValue] = (hist[card.value as RankValue] || 0) + 1;
             return hist;
         }, hist);
-    
-        // Scored histogram
-        // Descending by count
-        // [ [ rank, count ] ]
-        // scoredHist[x][0] references the rank of the cards (Jacks, Aces, etc.)
-        // scoredHist[x][1] references the number of times that rank appears in a hand
         
+        // Create scored histogram
         const scoredHist: (number | undefined)[][] = Object
             .keys(hist)
             .map(rank => [parseInt(rank), hist[rank as unknown as RankValue]])
             .sort((a, b) => (a[1] ?? 0) === (b[1] ?? 0) ? (b[0] ?? 0) - (a[0] ?? 0) : (b[1] ?? 0) - (a[1] ?? 0));
-    
-        console.log(scoredHist);
+        
+        // Add safety check before continuing
+        if (scoredHist.length === 0) {
+            this.winningHand = "Invalid Hand";
+            return 0;
+        }
+        
         // Suits
         // [ suit: count ]
         
@@ -514,7 +518,7 @@ class Hand extends Array {
         return this.valueOf();
     }
 
-    [Symbol.iterator](): IterableIterator<Card> {
+    /*[Symbol.iterator](): IterableIterator<Card> {
         let index = 0;
         const cards = this.cards;
 
@@ -530,7 +534,7 @@ class Hand extends Array {
             }
             }
         };
-    }
+    }*/
 
     sortDescending(): void {
         this.cards.sort((a: Card, b: Card) => b.getValue() - a.getValue());

@@ -52,6 +52,15 @@ export const RANK = {
   WILD:   'wild'
 }
 
+export const ACTIONS_ARRAY = [
+  "fold",
+  "check",
+  "call",
+  "bet",
+  "raise",
+  "all-in"
+]
+
 export enum GAME_PHASE {
   DEAL          = 1,
   PRE_FLOP      = 2,

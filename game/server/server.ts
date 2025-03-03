@@ -4,18 +4,21 @@ import express from 'express'
 import cors from 'cors';
 import { Server } from 'colyseus'
 import { monitor } from '@colyseus/monitor';
-
+import { WebSocketTransport } from '@colyseus/ws-transport';
 import { PokerRoom } from './rooms/PokerRoom';
 
 const app = express()
 
 app.use(cors());
-app.use(express.json);
+app.use(express.json());
 
 const server = http.createServer(app);
 const gameServer = new Server({ 
-  server, 
-})
+  transport: new WebSocketTransport({
+    server,
+  }),
+  devMode: true
+});
 
 gameServer.define('poker', PokerRoom );
 
