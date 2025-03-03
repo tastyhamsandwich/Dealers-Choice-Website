@@ -1,6 +1,6 @@
 "use client"
 
-import { PhaserGame } from '@/game/PhaserGame';
+import PhaserGame from '@/game/PhaserGame';
 import './poker.module.css';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -26,7 +26,7 @@ export default function PokerPage() {
 
     return (
         <div className="poker-page">
-            <PhaserGame userData={userData} />
+            <PhaserGame gameKey="poker" />
         </div>
     );
 }

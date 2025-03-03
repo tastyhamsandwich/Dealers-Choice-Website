@@ -1,57 +1,101 @@
-import { signUpAction } from "@/app/actions";
-import { FormMessage, Message } from "@comps/form-message";
-import { SubmitButton } from "@comps/submit-button";
-import { Input } from "@comps/ui/input";
-import { Label } from "@comps/ui/label";
-import Link from "next/link";
-import { SmtpMessage } from "../(boilerplate)/smtp-message";
+"use client"
+import { signUpAction } from './actions';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { signUpSchema } from '@lib/zod';
+import { FormMessage, Message } from "@/components/form-message";
+import { SubmitButton } from "@/components/submit-button";
+
 import './signup.module.css';
 
-export default async function Signup(props: {
-  searchParams: Promise<Message>;
-}) {
-  const searchParams = await props.searchParams;
-  if ("message" in searchParams) {
-    return (
-      <div className="w-full flex-1 flex items-center h-screen sm:max-w-md justify-center gap-2 p-4">
-        <FormMessage message={searchParams} />
-      </div>
-    );
-  }
+export default async function Signup() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+} = useForm({
+    resolver: zodResolver(signUpSchema),
+});
+
+const onSubmit = async (data: any) => {
+    try {
+        const formData = new FormData();
+        formData.append('email', data.email);
+        formData.append('password', data.password);
+        formData.append('username', data.username);
+        formData.append('confirmPassword', data.confirmPassword);
+        formData.append('dob', data.dob);
+        await signUpAction(formData);
+    } catch (error) {
+        console.error('Login error:', error);
+    }
+};
 
   return (
-    <>
-      <form className="flex flex-col min-w-64 max-w-64 mx-auto">
-        <h1 className="text-2xl font-medium">Sign up</h1>
-        <p className="text-sm text text-foreground">
-          Already have an account?{" "}
-          <Link className="text-primary font-medium underline" href="/sign-in">
-            Sign in
-          </Link>
-        </p>
-        <div className="flex flex-col gap-2 [&>input]:mb-3 mt-8">
-          <Label htmlFor="email">Email</Label>
-          <Input name="email" placeholder="you@example.com" required />
-          <Label htmlFor="password">Password</Label>
-          <Input
-            type="password"
-            name="password"
-            placeholder="Your password"
-            minLength={6}
-            required
-          />
-          <SubmitButton formAction={signUpAction} pendingText="Signing up...">
-            Sign up
-          </SubmitButton>
-          <FormMessage message={searchParams} />
+    <div className="pt-47 flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#111] to-[#222255] text-white">
+      <div className="input-container box-border h-128 w-128 p-4 border-4 border-slate-700 content-center">
+        <h2 className="banner text-center font-semibold underline-offset-8 font-mono drop-shadow-md text-3xl">User Login</h2>
+        <div id="signup" className="flex space-y-4">
+          <form className="signup" onSubmit={handleSubmit(onSubmit)}>
+            <div className="form-item flex flex-column space-x-8 pt-10 justify-between">
+              <div className="label-container pl-10">
+                <label htmlFor="login">Email</label>
+              </div>
+              <div className="inputcontainer">
+                <input {...register('email')} className="w-50 text-white bg-slate-800" id="email" type="text" name="email" required />
+              </div>
+              {errors.email?.message && <p>{errors.email?.message}</p>}
+            </div>
+            <div className="form-item flex flex-column space-x-8 pt-10 justify-between">
+              <div className="label-container pl-10">
+                <label htmlFor="password">Username</label>
+              </div>
+              <div className="inputcontainer">
+                <input {...register('username')} className="w-50 text-white bg-slate-800" id="username" type="text" name="username" required />
+              </div>
+              {errors.username?.message && <p>{errors.username?.message}</p>}
+            </div>
+            <div className="form-item flex flex-column space-x-8 pt-10 justify-between">
+              <div className="label-container pl-10">
+                <label htmlFor="password">Password</label>
+              </div>
+              <div className="inputcontainer">
+                <input {...register('password')} className="w-50 text-white bg-slate-800" id="password" type="password" name="password" required />
+              </div>
+              {errors.password?.message && <p>{errors.password?.message}</p>}
+            </div>
+            <div className="form-item flex flex-column space-x-8 pt-10 justify-between">
+              <div className="label-container pl-10">
+                <label htmlFor="password">Confirm Password</label>
+              </div>
+              <div className="inputcontainer">
+                <input {...register('confirmPassword')} className="w-50 text-white bg-slate-800" id="confirmPassword" type="password" name="confirmPassword" required />
+              </div>
+              {errors.confirmPassword?.message && <p>{errors.confirmPassword?.message}</p>}
+            </div>
+            <div className="form-item flex flex-column space-x-8 pt-10 justify-between">
+              <div className="label-container pl-10">
+                <label htmlFor="password">Date of Birth</label>
+              </div>
+              <div className="inputcontainer">
+                <input {...register('dob')} className="w-50 text-white bg-slate-800" id="dob" type="date" name="dob" required />
+              </div>
+              {errors.dob?.message && <p>{errors.dob?.message}</p>}
+            </div>
+            <div className="justify-center flex form-submit">
+              <SubmitButton formAction={signUpAction} pendingText="Signing up...">Sign Up</SubmitButton>
+            </div>
+          </form>
         </div>
-      </form>
-      <SmtpMessage />
-    </>
-  );
+      </div>
+      <div className="text-white pt-10" >
+        <h3>Already have an account? <a href="/login" className="text-green-300 font-bold text-pretty login-link hover:underline">Log in!</a>!</h3>
+      </div>
+    </div>
+)
 }
 
-
+//<button type="submit" className="text-white rounded-lg border-green-700 shadow shadow-green-500/50 hover:shadow-l active:pt-3 hover:shadow-white/50 drop-shadow-md border-4 bg-gradient-to-b from-[#33aa33] to-[#001100] px-5 py-3 mt-5 signup">Login</button>
 /*"use client"
 
 import React, { useState } from 'react';
