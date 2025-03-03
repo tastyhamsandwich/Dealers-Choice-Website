@@ -5,9 +5,12 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    "strictPropertyInitialization": false,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
@@ -30,7 +33,12 @@
       "@hooks/*": ["./hooks/*"],
       "@supabase/*": ["./lib/supabase/*"],
       "@supaC": ["./lib/supabase/client"],
-      "@supaS": ["./lib/supabase/server"]
+      "@supaS": ["./lib/supabase/server"],
+      "@clib/*": ["./game/client/lib/*"],
+      "@scenes/*": ["./game/client/scenes/*"],
+      "@slib/*": ["./game/server/lib/*"],
+      "@client/*": ["./game/client/*"],
+      "@server/*": ["./game/server/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "hooks/UserContext.js", "hooks/UserContext.js"],
