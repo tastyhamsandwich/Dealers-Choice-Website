@@ -1,3 +1,5 @@
+/* postcss */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -65,5 +67,20 @@
   }
   body {
     @apply bg-background text-foreground;
+    padding-top: 64px;
   }
+}
+
+/* Ensure the NavBar container is always on top */
+.container-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+/* Ensure Phaser canvas doesn't overlap NavBar */
+canvas {
+  z-index: 1;
 }

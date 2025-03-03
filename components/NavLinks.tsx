@@ -12,6 +12,7 @@ export default function NavLinks() {
     const links = [
         {name: 'Home', path: '/', protected: false},
         {name: 'About', path: '/about', protected: false},
+        {name: 'Dashboard', path: '/dashboard', protected: true},
         {name: 'Login', path: '/login', protected: false, hideWhenLoggedIn: true},
         {name: 'Register', path: '/signup', protected: false, hideWhenLoggedIn: true},
         {name: 'Poker', path: '/poker', protected: true},
