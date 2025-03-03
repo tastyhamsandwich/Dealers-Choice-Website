@@ -43,6 +43,9 @@ export class PokerRoom extends Room<PokerGameState> {
   maxClients: number = 6;
   deck: Deck;
   
+  // Add to class properties
+  private lastBettor: number = -1; // Track who made the last bet/raise
+  
   onCreate(options: any) {
     this.state = new PokerGameState();
     this.state.roomId = this.roomId;
@@ -131,6 +134,8 @@ export class PokerRoom extends Room<PokerGameState> {
     this.state.players.forEach(player => {
       player.cards = new ArraySchema<string>();
       player.currentBet = 0;
+      player.lastAction = "";
+      player.canAct = false;
     });
 
     // Deal cards
@@ -144,25 +149,43 @@ export class PokerRoom extends Room<PokerGameState> {
     const bigBlindPlayer = this.state.players[bigBlindPos];
     
     if (smallBlindPlayer && bigBlindPlayer) {
-      smallBlindPlayer.chips -= this.state.smallBlind;
-      bigBlindPlayer.chips -= this.state.bigBlind;
-      smallBlindPlayer.currentBet = this.state.smallBlind;
-      bigBlindPlayer.currentBet = this.state.bigBlind;
-      this.state.pot += this.state.smallBlind + this.state.bigBlind;
-      this.state.currentBet = this.state.smallBlind + this.state.bigBlind;
+      // Post small blind
+      const smallBlindAmount = Math.min(this.state.smallBlind, smallBlindPlayer.chips);
+      smallBlindPlayer.chips -= smallBlindAmount;
+      smallBlindPlayer.currentBet = smallBlindAmount;
+      
+      // Post big blind
+      const bigBlindAmount = Math.min(this.state.bigBlind, bigBlindPlayer.chips);
+      bigBlindPlayer.chips -= bigBlindAmount;
+      bigBlindPlayer.currentBet = bigBlindAmount;
+      
+      // Update pot and current bet
+      this.state.pot = smallBlindAmount + bigBlindAmount;
+      this.state.currentBet = bigBlindAmount;
     }
 
     // Start betting round
     this.state.gamePhase = "betting";
-
-    this.state.players.forEach(player => {
-      player.canAct = (player.id === this.state.players[this.state.currentPlayerTurn].id) ? true : false;
-    })
-    this.state.currentPlayerTurn = this.state.dealerIndex + 1;
+    
+    // First action is to the player after the big blind
+    this.state.currentPlayerTurn = (bigBlindPos + 1) % this.state.players.length;
+    
+    // Find next active player
+    while (!this.state.players[this.state.currentPlayerTurn].isActive) {
+      this.state.currentPlayerTurn = (this.state.currentPlayerTurn + 1) % this.state.players.length;
+    }
+    
+    // Set canAct for the first player
+    this.state.players.forEach((player, index) => {
+      player.canAct = (index === this.state.currentPlayerTurn);
+    });
+    
+    console.log("Round started, first player to act:", this.state.currentPlayerTurn);
   }
 
   private dealToPlayers() {
-    this.deck = new Deck(true);
+    this.deck = new Deck();
+    this.deck.shuffle();
     
     // Deal 2 cards to each player, starting from dealer's left
     for (let round = 0; round < 2; round++) {  // Two rounds of dealing
@@ -208,22 +231,21 @@ export class PokerRoom extends Room<PokerGameState> {
 
   private handleBet(client: Client, amount: number): boolean {
     const player = this.getPlayerByClient(client);
-    if (!player || this.state.gamePhase !== "betting") return false;
+    if (!player || this.state.gamePhase !== "betting" || !player.isActive || !player.canAct) return false;
 
-    if (player.chips < amount || amount < this.state.currentBet || !player.isActive) {
-      return false;
-    } else if (player.chips >= amount && amount >= this.state.currentBet) {
-      player.chips -= amount;
-      player.currentBet = amount;
-      player.lastAction = "bet";
-      this.state.pot += amount;
-      this.state.currentBet = amount;
-      
-      this.moveToNextPlayer();
-      return true;
-    }
+    // Can only bet if there's no current bet
+    if (this.state.currentBet > 0) return false;
 
-    return false;
+    if (player.chips < amount) return false;
+
+    player.chips -= amount;
+    player.currentBet = amount;
+    player.lastAction = "bet";
+    this.state.pot += amount;
+    this.state.currentBet = amount;
+    this.lastBettor = this.state.currentPlayerTurn; // Track who made the bet
+    
+    return true;
   }
 
   private handleFold(client: Client): boolean {
@@ -233,14 +255,16 @@ export class PokerRoom extends Room<PokerGameState> {
 
     player.isActive = false;
     player.lastAction = "fold";
-    this.moveToNextPlayer();
-    this.checkGameState();
+    
+    return true;
   }
 
   private handleCheck(client: Client): boolean {
     const player = this.getPlayerByClient(client);
-    if (!player || this.state.gamePhase !== "betting" || !player.isActive || !player.canAct) 
-      return false;
+    if (!player || this.state.gamePhase !== "betting" || !player.isActive || !player.canAct) return false;
+
+    // Can only check if there's no current bet
+    if (this.state.currentBet > 0) return false;
 
     player.lastAction = "check";
     return true;
@@ -248,38 +272,43 @@ export class PokerRoom extends Room<PokerGameState> {
 
   private handleCall(client: Client): boolean {
     const player = this.getPlayerByClient(client);
-    if (!player || this.state.gamePhase !== "betting" || !player.isActive || !player.canAct) 
-      return false;
+    if (!player || this.state.gamePhase !== "betting" || !player.isActive || !player.canAct) return false;
 
-    if (player.chips < this.state.currentBet) {
-      // TODO handle player not enough chips
-      return false;
-    }
+    // Can only call if there's a bet to call
+    if (this.state.currentBet === 0) return false;
 
-    player.chips -= this.state.currentBet;
-    player.currentBet = this.state.currentBet;
+    const amountToCall = this.state.currentBet - player.currentBet;
+    if (amountToCall <= 0) return false;
+
+    // Handle all-in calls
+    const actualCallAmount = Math.min(amountToCall, player.chips);
+    player.chips -= actualCallAmount;
+    player.currentBet += actualCallAmount;
     player.lastAction = "call";
-    
-    this.state.pot += this.state.currentBet;
+    this.state.pot += actualCallAmount;
 
     return true;
   }
 
   private handleRaise(client: Client, amount: number): boolean {
     const player = this.getPlayerByClient(client);
-    if (!player || this.state.gamePhase !== "betting" || !player.isActive || !player.canAct) 
-      return false;
+    if (!player || this.state.gamePhase !== "betting" || !player.isActive || !player.canAct) return false;
 
-    if (player.chips < amount || amount <= this.state.currentBet) {
-      return false;
-    }
+    // Can only raise if there's a current bet
+    if (this.state.currentBet === 0) return false;
+
+    // Amount must be greater than current bet
+    if (amount <= this.state.currentBet) return false;
+
+    // Check if player has enough chips
+    if (player.chips < amount) return false;
 
     player.chips -= amount;
     player.currentBet = amount;
     player.lastAction = "raise";
-
     this.state.pot += amount;
     this.state.currentBet = amount;
+    this.lastBettor = this.state.currentPlayerTurn; // Track who made the raise
 
     return true;
   }
@@ -308,40 +337,113 @@ export class PokerRoom extends Room<PokerGameState> {
   private checkGameState() {
     const activePlayers = this.state.players.filter(p => p.isActive);
     if (activePlayers.length === 1) {
-      this.handleWinnerByFold(activePlayers[0]);
-      return;
+        this.handleWinnerByFold(activePlayers[0]);
+        return;
     }
 
     if (this.state.gamePhase === "betting") {
-      // Check if all active players have matched the current bet or folded
-      const allPlayersActed = this.state.players.every(player => 
-        !player.isActive || // Player has folded
-        player.currentBet === this.state.currentBet || // Player has matched the current bet
-        player.lastAction === "fold" // Player has explicitly folded
-      );
-      
-      if (allPlayersActed) {
-        // All players have acted, move to the next phase
-        this.state.gamePhase = "dealing";
-        if (this.state.roundName === "deal") {
-          this.state.roundName = "flop";
-          this.dealCommunityCards();
-        } else if (this.state.roundName === "flop") {
-          this.state.roundName = "turn";
-          this.dealCommunityCards();
-        } else if (this.state.roundName === "turn") {
-          this.state.roundName = "river";
-          this.dealCommunityCards();
-        } else if (this.state.roundName === "river") {
-          this.state.roundName = "showdown";
-          this.handleShowdown(activePlayers);
+        // Check if betting round is complete
+        const bettingComplete = this.isBettingComplete(activePlayers);
+        
+        if (bettingComplete) {
+            console.log("Betting round complete, moving to next phase");
+            // Reset betting state
+            this.state.players.forEach(player => {
+                player.currentBet = 0;
+                player.lastAction = "";
+                player.canAct = false;
+            });
+            this.state.currentBet = 0;
+            this.lastBettor = -1; // Reset last bettor
+
+            // Move to next phase
+            switch (this.state.roundName) {
+                case "deal":
+                    console.log("Moving to flop");
+                    this.state.roundName = "flop";
+                    this.state.gamePhase = "dealing";
+                    this.dealCommunityCards();
+                    this.startBettingRound();
+                    break;
+                case "flop":
+                    console.log("Moving to turn");
+                    this.state.roundName = "turn";
+                    this.state.gamePhase = "dealing";
+                    this.dealCommunityCards();
+                    this.startBettingRound();
+                    break;
+                case "turn":
+                    console.log("Moving to river");
+                    this.state.roundName = "river";
+                    this.state.gamePhase = "dealing";
+                    this.dealCommunityCards();
+                    this.startBettingRound();
+                    break;
+                case "river":
+                    console.log("Moving to showdown");
+                    this.state.roundName = "showdown";
+                    this.state.gamePhase = "showdown";
+                    this.handleShowdown(activePlayers);
+                    break;
+            }
         }
-      }
     }
 
     if (this.state.gamePhase === "showdown") {
-      this.handleShowdown(activePlayers);
+        this.handleShowdown(activePlayers);
     }
+  }
+
+  private isBettingComplete(activePlayers: PlayerState[]): boolean {
+    // If there's no current bet
+    if (this.state.currentBet === 0) {
+        // Everyone must have acted (either checked or folded)
+        return activePlayers.every(player => 
+            player.lastAction === "check" || 
+            player.lastAction === "fold" || 
+            !player.isActive
+        );
+    }
+
+    // If there is a current bet
+    // Everyone must have either:
+    // 1. Called the bet (their currentBet matches the table's currentBet)
+    // 2. Folded
+    // 3. Gone all-in with less than the current bet
+    // AND we must have gone around to the last bettor
+    const allPlayersActed = activePlayers.every(player => {
+        if (!player.isActive || player.lastAction === "fold") return true;
+        if (player.chips === 0 && player.lastAction === "call") return true; // All-in
+        return player.currentBet === this.state.currentBet;
+    });
+
+    // Check if we've completed the betting round by reaching the last bettor
+    const reachedLastBettor = this.state.currentPlayerTurn === this.lastBettor || this.lastBettor === -1;
+
+    return allPlayersActed && reachedLastBettor;
+  }
+
+  private startBettingRound() {
+    console.log(`Starting betting round for ${this.state.roundName}`);
+    this.state.gamePhase = "betting";
+    
+    // For all betting rounds, action starts with first active player after the big blind
+    const bigBlindPos = (this.state.dealerIndex + 2) % this.state.players.length;
+    this.state.currentPlayerTurn = (bigBlindPos + 1) % this.state.players.length;
+    
+    // Find the next active player
+    let loopCount = 0;
+    while (!this.state.players[this.state.currentPlayerTurn].isActive && loopCount < this.state.players.length) {
+      this.state.currentPlayerTurn = (this.state.currentPlayerTurn + 1) % this.state.players.length;
+      loopCount++;
+    }
+    
+    // Set canAct for the current player
+    this.state.players.forEach((player, index) => {
+      player.canAct = (index === this.state.currentPlayerTurn && player.isActive);
+    });
+    
+    console.log(`Betting round started, first player to act: ${this.state.currentPlayerTurn}`);
   }
 
   private handleWinnerByFold(winner: PlayerState) {

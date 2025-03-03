@@ -162,7 +162,8 @@ const StartGame = (parent: string, userData: IUserData) => {
             backgroundColor: '#028af8',
             scale: {
                 mode: Scale.FIT,
-                autoCenter: Scale.CENTER_BOTH
+                autoCenter: Scale.CENTER_BOTH,
+                padding: { top: 0, bottom: 0, left: 0, right: 0 }
             },
             // Add these audio settings to prevent AudioContext issues
             audio: {
@@ -213,6 +214,12 @@ const StartGame = (parent: string, userData: IUserData) => {
                 preBoot: (game) => {
                     // Set a reference to the active game
                     activeGame = game;
+                    
+                    // Adjust the canvas position to account for the NavBar
+                    const parentElement = document.getElementById(parent);
+                    if (parentElement) {
+                        parentElement.style.paddingTop = '0px';
+                    }
                 },
                 postBoot: (game) => {
                     // Disable visibility change handling which causes problems in React

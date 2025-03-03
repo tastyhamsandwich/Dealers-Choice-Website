@@ -29,6 +29,7 @@ interface SceneUI {
         handResultMessage?: Phaser.GameObjects.Text;
     }
     readyButton?: Phaser.GameObjects.Container;
+    returnButton?: Phaser.GameObjects.Container;
 }
 
 // Extend Phaser.Game to include userData property
@@ -48,12 +49,15 @@ export class PokerGame extends Scene {
         currentPlayerTurn: number;
         currentBet: number;
         sidepots: Sidepot[];
+        dealerIndex: number;
     } | null = null;
     
     private sceneUI: SceneUI = {};
     private tableSprite?: Phaser.GameObjects.Sprite;
     private cardSprites: Phaser.GameObjects.Sprite[] = [];
+    private enlargedCardSprites: Phaser.GameObjects.Sprite[] = []; // Array for the enlarged card sprites
     private userData: IUserData | null = null;
+    private tokenSprites: {[key: string]: Phaser.GameObjects.Sprite} = {};
 
     constructor() {
         super({ key: 'PokerGame' });
@@ -85,6 +89,9 @@ export class PokerGame extends Scene {
         this.load.image('chipSpade', 'assets/chip_spade.png');
         this.load.image('chipDiamond', 'assets/chip_diamond.png');
         this.load.image('chipsIcon', 'assets/chips_stack_icon.png');
+        this.load.image('dealerToken', 'assets/d-token.png');
+        this.load.image('smallBlindToken', 'assets/sb-token.png');
+        this.load.image('bigBlindToken', 'assets/bb-token.png');
         
         // Load sounds
         this.load.audio('notification', 'assets/sounds/notification.mp3');
@@ -237,22 +244,37 @@ export class PokerGame extends Scene {
                 this.room.send("ready");
                 console.log("Sent ready message to server");
                 
-                // Update button text to show player is ready
+                // Update button text and disable it permanently
                 readyButtonText.setText("Ready ✓");
-                
-                // Disable the button temporarily to prevent spam
                 readyButton.disableInteractive();
+                readyButton.setTint(0x666666); // Visual feedback that it's disabled
                 
-                // Re-enable after a short delay
+                // Hide the button after a short delay
                 this.time.delayedCall(1000, () => {
-                    if (readyButton && readyButton.scene) {
-                        readyButton.setInteractive({ useHandCursor: true });
+                    if (this.sceneUI.readyButton) {
+                        this.sceneUI.readyButton.setVisible(false);
                     }
                 });
             }
         });
         
         this.sceneUI.readyButton.setVisible(true);
+
+        // Create button to return to Main Menu
+        this.sceneUI.returnButton = this.add.container(100, 50);
+        
+        const returnButton = this.add.image(0, 0, 'button').setScale(0.5);
+        const returnButtonText = this.add.text(0, 0, 'Main Menu', {
+            fontSize: '20px',
+            color: '#ffffff',
+        }).setOrigin(0.5);
+        this.sceneUI.returnButton.add([returnButton, returnButtonText]);
+
+        returnButton.setInteractive({ useHandCursor: true });
+        returnButton.on('pointerdown', () => {
+            //this.room?.send("leave");
+            this.scene.start('MainMenu');
+        });
     }
 
     private displayUserInfo() {
@@ -383,7 +405,8 @@ export class PokerGame extends Scene {
                 communityCards: state.communityCards.map((card: string) => card),
                 currentPlayerTurn: state.currentPlayerTurn,
                 currentBet: state.currentBet,
-                sidepots: state.sidepots
+                sidepots: state.sidepots,
+                dealerIndex: state.dealerIndex
             };
             
             // Update the game display with the new state
@@ -391,12 +414,25 @@ export class PokerGame extends Scene {
         });
         
         // Listen for game start event
-        this.room.onMessage("gameStarted", () => {
-            console.log("Game started message received");
+        this.room.onMessage("gameStarted", (data) => {
+            console.log("Game started message received:", data);
+            
+            // Hide waiting message and ready button
             this.hideWaitingMessage();
-            this.showGameStartedMessage();
-            this.startGameAnimation();
             this.hideReadyButton();
+            
+            // Show game started message
+            this.showGameStartedMessage();
+            
+            // Start the game animation which will also highlight the first active player
+            this.startGameAnimation();
+            
+            // Force an update of the game display to ensure everything is in the correct state
+            if (this.gameState) {
+                this.time.delayedCall(1000, () => {
+                    this.updateGameDisplay();
+                });
+            }
         });
         
         // Listen for player turn notification
@@ -479,9 +515,13 @@ export class PokerGame extends Scene {
     }
 
     private updatePlayerDisplays(players: Player[]) {
-        // Clear any existing player displays first
+        // Clear any existing player displays and tokens first
         this.children.list
-            .filter(obj => obj.name && (obj.name.startsWith('player-') || obj.name.startsWith('turn-text-')))
+            .filter(obj => obj.name && (
+                obj.name.startsWith('player-') || 
+                obj.name.startsWith('turn-text-') ||
+                obj.name.startsWith('token-')
+            ))
             .forEach(obj => obj.destroy());
         
         // Get the local player index
@@ -496,9 +536,11 @@ export class PokerGame extends Scene {
             this.updatePlayerInfo(player, position);
             
             // Update player cards
-            // Only show actual cards for the local player or during showdown
             const showCards = player.id === this.room?.sessionId || this.gameState?.gamePhase === "showdown";
             this.updatePlayerCards(player, position, showCards);
+            
+            // Display tokens for dealer, small blind, and big blind
+            this.displayPlayerTokens(index, position, players.length);
         });
     }
 
@@ -542,35 +584,67 @@ export class PokerGame extends Scene {
     }
 
     private updatePlayerCards(player: Player, position: {x: number, y: number}, showCards: boolean) {
-        // Clear any existing card sprites for this player
-        this.children.list
-            .filter(obj => obj.name && obj.name.startsWith(`card-${player.id}`))
-            .forEach(obj => obj.destroy());
-        
-        // If player has cards, display them
-        if (player.cards && player.cards.length > 0) {
-            // Card offset to display them side by side
-            const cardOffset = 30;
-            
-            player.cards.forEach((card, cardIndex) => {
-                // Determine which texture to use - show actual cards for local player or during showdown
-                // otherwise show card backs
-                const cardTexture = showCards ? card : 'cardBack';
-                
-                // Create the card sprite
-                const cardSprite = this.add.sprite(
-                    position.x + (cardIndex * cardOffset) - 15, 
-                    position.y - 40,  // Position cards above the player
-                    cardTexture
-                ).setScale(0.5);
-                
-                // Set a name for the card to identify it later
-                cardSprite.setName(`card-${player.id}-${cardIndex}`);
-                
-                // Add to our tracking array
-                this.cardSprites.push(cardSprite);
-            });
+        // Clear existing card sprites for this position
+        this.cardSprites = this.cardSprites.filter(sprite => {
+            if (sprite.getData('position')?.x === position.x && sprite.getData('position')?.y === position.y) {
+                sprite.destroy();
+                return false;
+            }
+            return true;
+        });
+
+        // If this is the local player, also clear enlarged cards
+        const isLocalPlayer = player.id === this.room?.sessionId;
+        if (isLocalPlayer) {
+            this.enlargedCardSprites.forEach(sprite => sprite.destroy());
+            this.enlargedCardSprites = [];
         }
+
+        if (!player.cards || player.cards.length === 0) return;
+
+        const cardSpacing = 30;
+        const startX = position.x - ((player.cards.length - 1) * cardSpacing) / 2;
+
+        player.cards.forEach((card, index) => {
+            const x = startX + index * cardSpacing;
+            const y = position.y;
+            
+            // Regular sized card
+            const cardSprite = this.add.sprite(x, y, showCards ? card : 'cardBack');
+            cardSprite.setScale(0.5);
+            cardSprite.setData('position', position);
+            this.cardSprites.push(cardSprite);
+
+            // If this is the local player, also create enlarged cards in bottom-left
+            if (isLocalPlayer) {
+                const enlargedX = 100 + index * 80; // Position in bottom-left, more spacing between cards
+                const enlargedY = this.game.canvas.height - 100; // Near bottom of screen
+                const enlargedCard = this.add.sprite(enlargedX, enlargedY, card);
+                enlargedCard.setScale(0.8); // Larger scale
+                enlargedCard.setDepth(100); // Ensure it's above other game elements
+                this.enlargedCardSprites.push(enlargedCard);
+            }
+        });
+    }
+
+    // Add method to update enlarged cards separately if needed
+    private updateEnlargedCards() {
+        const localPlayer = this.gameState?.players.find(p => p.id === this.room?.sessionId);
+        if (!localPlayer || !localPlayer.cards) return;
+
+        // Clear existing enlarged cards
+        this.enlargedCardSprites.forEach(sprite => sprite.destroy());
+        this.enlargedCardSprites = [];
+
+        // Create new enlarged cards
+        localPlayer.cards.forEach((card, index) => {
+            const x = 100 + index * 80;
+            const y = this.game.canvas.height - 100;
+            const enlargedCard = this.add.sprite(x, y, card);
+            enlargedCard.setScale(0.8);
+            enlargedCard.setDepth(100);
+            this.enlargedCardSprites.push(enlargedCard);
+        });
     }
 
     private displayLocalPlayerCards() {
@@ -618,41 +692,47 @@ export class PokerGame extends Scene {
         });
     }
     private updateActionButtons(isMyTurn: boolean) {
-        if (!this.gameState || !this.sceneUI.actionButtons || !this.sceneUI.disabledButtons) return;
-
-        if (this.gameState.gamePhase === "waiting" || this.gameState.gamePhase === "dealing") {
-            Object.entries(this.sceneUI.actionButtons).forEach(([action, button]) => {
-                button.setVisible(false);
-            });
-            Object.entries(this.sceneUI.disabledButtons).forEach(([action, button]) => {
-                button.setVisible(true);
-            });
-            return;
-        }
+        // If we don't have action buttons or disabled buttons, exit early
+        if (!this.sceneUI.actionButtons || !this.sceneUI.disabledButtons) return;
         
-        // Find the local player in the game state
-        const localPlayerIndex = this.getLocalPlayerIndex();
-        const localPlayer = localPlayerIndex >= 0 ? this.gameState.players[localPlayerIndex] : null;
+        console.log(`Updating action buttons, isMyTurn: ${isMyTurn}`);
         
-        // Check if it's actually this player's turn based on canAct property
-        const canActNow = localPlayer && localPlayer.canAct === true;
+        // Get valid actions based on the current game state
+        const validActions = isMyTurn ? this.getValidActions(this.gameState?.currentBet || 0) : [];
         
-        // Only show action buttons if it's this player's turn AND they can act
-        const validActions = canActNow ? this.getValidActions(this.gameState.currentBet) : [];
-        const invalidActions = utils.getRemainingElements(c.ACTIONS_ARRAY, validActions);
-
-        // Show/hide buttons based on valid actions
-        Object.entries(this.sceneUI.actionButtons).forEach(([action, button]) => {
-            button.setVisible(validActions.includes(action));
+        // List of all possible actions
+        const allActions = ['fold', 'check', 'call', 'bet', 'raise'];
+        
+        // Update each action button
+        allActions.forEach(action => {
+            const actionButton = this.sceneUI.actionButtons?.[action as keyof typeof this.sceneUI.actionButtons];
+            const disabledButton = this.sceneUI.disabledButtons?.[`${action}Disabled` as keyof typeof this.sceneUI.disabledButtons];
+            
+            if (actionButton && disabledButton) {
+                // If it's my turn and the action is valid, show the action button
+                if (isMyTurn && validActions.includes(action)) {
+                    actionButton.setVisible(true);
+                    disabledButton.setVisible(false);
+                    
+                    // Make sure the button is interactive
+                    const buttonImage = actionButton.getAt(0) as Phaser.GameObjects.Image;
+                    if (buttonImage) {
+                        buttonImage.setInteractive({ useHandCursor: true });
+                    }
+                } 
+                // Otherwise, show the disabled button
+                else {
+                    actionButton.setVisible(false);
+                    disabledButton.setVisible(true);
+                    
+                    // Make sure the button is not interactive
+                    const buttonImage = actionButton.getAt(0) as Phaser.GameObjects.Image;
+                    if (buttonImage) {
+                        buttonImage.disableInteractive();
+                    }
+                }
+            }
         });
-
-        // Show/hide disabled buttons based on valid actions
-        Object.entries(this.sceneUI.disabledButtons).forEach(([action, button]) => {
-            button.setVisible(invalidActions.includes(action));
-        });
-        
-        // Display a visual indicator for the active player
-        this.highlightActivePlayer();
     }
 
     private updateUserBalance(newBalance: number) {
@@ -673,23 +753,57 @@ export class PokerGame extends Scene {
     }
 
     private getValidActions(currentBet: number): string[] {
-        if (!this.gameState) return [];
-
-        const player = this.gameState.players.find(p => p.id === this.room?.sessionId);
-        if (!player) return [];
-
-        const actions = ['fold'];
-        
-        if (currentBet === player.currentBet)
-            actions.push('check');
-        else if (player.chips >= currentBet - player.currentBet)
-            actions.push('call');
-
-        if (player.chips > currentBet) {
-            actions.push(currentBet === 0 ? 'bet' : 'raise');
+        // If we don't have game state or it's not a betting phase, return empty array
+        if (!this.gameState || 
+            this.gameState.gamePhase === "waiting" || 
+            this.gameState.gamePhase === "dealing" ||
+            this.gameState.gamePhase === "showdown") {
+            return [];
         }
-
-        return actions;
+        
+        // Get the local player
+        const localPlayerIndex = this.getLocalPlayerIndex();
+        if (localPlayerIndex < 0) return [];
+        
+        const localPlayer = this.gameState.players[localPlayerIndex];
+        if (!localPlayer || !localPlayer.canAct) return [];
+        
+        // Get the player's current bet
+        const playerBet = localPlayer.currentBet || 0;
+        
+        // Calculate the call amount (difference between current bet and player's bet)
+        const callAmount = currentBet - playerBet;
+        
+        // Initialize valid actions array
+        const validActions: string[] = [];
+        
+        // Fold is always valid unless it's a check situation
+        if (currentBet > 0) {
+            validActions.push('fold');
+        }
+        
+        // Check is valid only if there's no current bet to call
+        if (currentBet === 0) {
+            validActions.push('check');
+        }
+        
+        // Call is valid if there's a bet to call and player has enough chips
+        if (currentBet > 0 && localPlayer.chips > 0) {
+            validActions.push('call');
+        }
+        
+        // Bet is valid only if there's no current bet and player has chips
+        if (currentBet === 0 && localPlayer.chips > 0) {
+            validActions.push('bet');
+        }
+        
+        // Raise is valid if there's a current bet and player has enough chips to raise
+        if (currentBet > 0 && localPlayer.chips > callAmount) {
+            validActions.push('raise');
+        }
+        
+        console.log(`Valid actions for player: ${validActions.join(', ')}`);
+        return validActions;
     }
 
     private sendAction(action: string, amount?: number) {
@@ -743,7 +857,21 @@ export class PokerGame extends Scene {
     }
 
     private startGameAnimation() {
-        // TODO Implement game start animation
+        // Play card dealing animation
+        this.sound.play('cardFlip');
+        
+        // After animation completes, update the game display
+        this.time.delayedCall(500, () => {
+            if (this.gameState) {
+                // Make sure the game display is updated with the latest state
+                this.updateGameDisplay();
+                
+                // Ensure the first active player is highlighted
+                this.highlightActivePlayer();
+                
+                console.log("Game started, first active player highlighted");
+            }
+        });
     }
 
     private showHandResult(result: any) {
@@ -794,6 +922,10 @@ export class PokerGame extends Scene {
         
         // Clear game state
         this.gameState = null;
+
+        // Clean up enlarged card sprites
+        this.enlargedCardSprites.forEach(sprite => sprite.destroy());
+        this.enlargedCardSprites = [];
     }
 
     // Handle visibility changes to prevent gl errors
@@ -836,6 +968,8 @@ export class PokerGame extends Scene {
             
             // Only highlight if the player can act
             if (activePlayer && activePlayer.canAct) {
+                console.log(`Highlighting active player: ${activePlayer.name} (index: ${activePlayerIndex})`);
+                
                 // Get the position for this player
                 const position = this.getPlayerPosition(activePlayerIndex, this.gameState.players.length);
                 
@@ -888,11 +1022,63 @@ export class PokerGame extends Scene {
                     // Play a notification sound
                     this.sound.play('notification');
                 }
+            } else {
+                console.log(`Player ${activePlayerIndex} cannot act right now`);
             }
+        } else {
+            console.log("No active player found or invalid player index");
         }
     }
 
-    
+    private displayPlayerTokens(playerIndex: number, position: {x: number, y: number}, totalPlayers: number) {
+        if (!this.gameState) return;
+
+        const tokenScale = 0.5;
+        const tokenOffset = 40; // Base offset from player position
+
+        // Calculate if this player has any special positions
+        const isDealer = playerIndex === this.gameState.dealerIndex;
+        const isSmallBlind = playerIndex === (this.gameState.dealerIndex + 1) % totalPlayers;
+        const isBigBlind = playerIndex === (this.gameState.dealerIndex + 2) % totalPlayers;
+
+        // Calculate positions for each token type
+        const tokenPositions = {
+            dealer: { x: position.x - tokenOffset, y: position.y - tokenOffset },
+            smallBlind: { x: position.x + tokenOffset, y: position.y - tokenOffset },
+            bigBlind: { x: position.x + tokenOffset, y: position.y + tokenOffset }
+        };
+
+        // Special case for 2 players where one player might be both dealer and big blind
+        if (totalPlayers === 2 && isDealer && isBigBlind) {
+            // Adjust positions to prevent overlap
+            tokenPositions.dealer.x = position.x - tokenOffset;
+            tokenPositions.dealer.y = position.y - tokenOffset;
+            tokenPositions.bigBlind.x = position.x + tokenOffset;
+            tokenPositions.bigBlind.y = position.y + tokenOffset;
+        }
+
+        // Display dealer token
+        if (isDealer) {
+            const dealerToken = this.add.sprite(tokenPositions.dealer.x, tokenPositions.dealer.y, 'd-token')
+                .setScale(tokenScale)
+                .setName(`token-dealer-${playerIndex}`);
+        }
+
+        // Display small blind token
+        if (isSmallBlind) {
+            const sbToken = this.add.sprite(tokenPositions.smallBlind.x, tokenPositions.smallBlind.y, 'sb-token')
+                .setScale(tokenScale)
+                .setName(`token-sb-${playerIndex}`);
+        }
+
+        // Display big blind token
+        if (isBigBlind) {
+            const bbToken = this.add.sprite(tokenPositions.bigBlind.x, tokenPositions.bigBlind.y, 'bb-token')
+                .setScale(tokenScale)
+                .setName(`token-bb-${playerIndex}`);
+        }
+    }
+
     update(time: number, delta: number) {
         // Check if we're waiting for players
         if (this.gameState && this.gameState.gamePhase === "waiting") {

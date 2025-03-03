@@ -188,6 +188,36 @@ export default function PhaserGame({ width, height, gameKey = 'default' }: Phase
     };
   }, [gameInitialized]);
   
+  // Add a useEffect to handle window resize events
+  useEffect(() => {
+    // Skip if running on server
+    if (typeof window === 'undefined' || !gameInitialized) return;
+    
+    const handleResize = () => {
+      // Find the canvas element
+      const canvas = gameRef.current?.querySelector('canvas');
+      if (canvas) {
+        // Adjust canvas position to account for NavBar
+        canvas.style.marginTop = '0px';
+        
+        // Make sure the canvas is visible
+        canvas.style.visibility = 'visible';
+        canvas.style.display = 'block';
+      }
+    };
+    
+    // Call once on mount
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [gameInitialized]);
+  
   return (
     <div 
       ref={gameRef} 
@@ -195,7 +225,9 @@ export default function PhaserGame({ width, height, gameKey = 'default' }: Phase
       style={{ 
         width: width || '100%', 
         height: height || '100%',
-        position: 'relative'
+        position: 'relative',
+        zIndex: 1, // Ensure it's below the NavBar
+        overflow: 'hidden' // Prevent scrollbars
       }}
     >
       {!gameInitialized && <div className="loading">Loading game...</div>}
