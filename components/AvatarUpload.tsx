@@ -1,13 +1,16 @@
 import React, { useRef } from 'react';
 import { imageConfig } from '@/lib/config/image';
-import ImageCropper from './ImageCropper';
+import ImageCropper from './ImageCropper'
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AvatarUpload() {
     const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
     const [error, setError] = React.useState<string | null>(null);
     const [isUploading, setIsUploading] = React.useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { profile } = useAuth();
 
+    
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         setError(null);
@@ -36,8 +39,10 @@ export default function AvatarUpload() {
             setIsUploading(true);
             setError(null);
 
-            // Create a File from the Blob
-            const file = new File([croppedBlob], 'avatar.png', {
+            // Create a File from the Blob with PNG extension
+            const timestamp = Date.now();
+            const filename = `avatar-${timestamp}.png`;
+            const file = new File([croppedBlob], filename, {
                 type: imageConfig.avatar.contentType
             });
 
@@ -63,7 +68,8 @@ export default function AvatarUpload() {
             }
             setSelectedFile(null);
 
-            // Optionally refresh the page or update the avatar display
+            // Instead of reloading the page, we could update the profile context
+            // For now, we'll use a reload
             window.location.reload();
 
         } catch (err) {

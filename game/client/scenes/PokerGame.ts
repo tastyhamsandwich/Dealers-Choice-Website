@@ -25,10 +25,13 @@ interface SceneUI {
     }
     sceneMessages?: {
         waitingMessage?: Phaser.GameObjects.Text;
+        waitingForReadyMessage?: Phaser.GameObjects.Text;
         gameStartedMessage?: Phaser.GameObjects.Text;
         handResultMessage?: Phaser.GameObjects.Text;
     }
     readyButton?: Phaser.GameObjects.Container;
+    readyButtonHighlight?: Phaser.GameObjects.Sprite;
+    readyPlayersList?: Phaser.GameObjects.Container;
     returnButton?: Phaser.GameObjects.Container;
 }
 
@@ -58,6 +61,17 @@ export class PokerGame extends Scene {
     private enlargedCardSprites: Phaser.GameObjects.Sprite[] = []; // Array for the enlarged card sprites
     private userData: IUserData | null = null;
     private tokenSprites: {[key: string]: Phaser.GameObjects.Sprite} = {};
+    private waitingMessage?: Phaser.GameObjects.Text;
+    private readyListContainer?: Phaser.GameObjects.Container;
+    private readyPlayersList: Phaser.GameObjects.Text[] = [];
+    private readyButtonHighlight?: Phaser.GameObjects.Sprite;
+    private readyButton?: Phaser.GameObjects.Sprite;
+    private readyButtonText?: Phaser.GameObjects.Text;
+    private handResultMessage?: Phaser.GameObjects.Text;
+    private gameStartedMessage?: Phaser.GameObjects.Text;
+    private potText?: Phaser.GameObjects.Text;
+    private disabledButtons: {[key: string]: Phaser.GameObjects.Container} = {};
+    private actionButtons: {[key: string]: Phaser.GameObjects.Container} = {};
 
     constructor() {
         super({ key: 'PokerGame' });
@@ -143,7 +157,7 @@ export class PokerGame extends Scene {
         this.tableSprite.setScale(0.8); // Adjust scale as needed
 
         // Add pot text
-        this.sceneUI.potText = this.add.text(100, 250, 'Pot: 0', {
+        this.potText = this.add.text(100, 250, 'Pot: 0', {
             fontSize: '24px',
             color: '#ffffff',
             shadow: {
@@ -156,10 +170,6 @@ export class PokerGame extends Scene {
     }
 
     private createUI() {
-        this.sceneUI.disabledButtons = {};
-        this.sceneUI.actionButtons = {};
-        this.sceneUI.sceneMessages = {};
-        
         // DEF Button positioning
         const startY = c.GAME_Y_MID - 100;
         const buttonSpacing = 60;
@@ -172,94 +182,137 @@ export class PokerGame extends Scene {
                 startY + (buttonSpacing * index),
                 action
             );
-            this.sceneUI.disabledButtons![`${action}Disabled`] = disabledButton;
+            this.disabledButtons[`${action}Disabled`] = disabledButton;
             
             const button = this.createActionButton(
                 buttonX,
                 startY + (buttonSpacing * index),
                 action
             );
-            this.sceneUI.actionButtons![action] = button;
+            this.actionButtons[action] = button;
         });
 
-        // DEF Create scene messages
-        // Waiting for players
-        this.sceneUI.sceneMessages.waitingMessage = this.add.text(c.GAME_X_MID, c.GAME_Y_MID - 50, 'Waiting for players...', {
-            fontSize: '24px',
-            color: '#ffffff',
-            shadow: {
-                offsetX: 2,
-                offsetY: 2,
-                color: '#000',
-                blur: 5,
+        // Create game started message
+        this.gameStartedMessage = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY - 100,
+            'Game starting...',
+            {
+                fontFamily: 'Arial',
+                fontSize: '28px',
+                color: '#ffffff'
             }
-        })
+        )
         .setOrigin(0.5)
-        .setVisible(false);
+        .setVisible(false)
+        .setShadow(2, 2, 'rgba(0,0,0,0.5)', 2);
 
-        // Game started
-        this.sceneUI.sceneMessages.gameStartedMessage = this.add.text(c.GAME_X_MID, c.GAME_Y_MID + 50, 'Game started!', {
-            fontSize: '24px',
-            color: '#ffffff',
-            shadow: {
-                offsetX: 2,
-                offsetY: 2,
-                color: '#000',
-                blur: 5,
+        // Create waiting message
+        this.waitingMessage = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY - 150,
+            'Waiting for players to be ready...',
+            {
+                fontFamily: 'Arial',
+                fontSize: '28px',
+                color: '#ffffff'
             }
-        })
+        )
         .setOrigin(0.5)
-        .setVisible(false);
+        .setVisible(false)
+        .setShadow(2, 2, 'rgba(0,0,0,0.5)', 2);
 
-        // Hand result
-        // TODO Properly handle hand result messages
-        this.sceneUI.sceneMessages.handResultMessage = this.add.text(c.GAME_X_MID, c.GAME_Y_MID, 'Hand result goes here', {
-            fontSize: '24px',
-            color: '#ffffff',
-            shadow: {
-                offsetX: 2,
-                offsetY: 2,
-                color: '#000',
-                blur: 5,
-            }
-        })
-        .setOrigin(0.5)
-        .setVisible(false);
-
-        this.sceneUI.readyButton = this.add.container(c.GAME_WIDTH - 100, 50);
-        const readyButton = this.add.image(0, 0, 'button').setScale(0.5);
-        const readyButtonText = this.add.text(0, 0, 'Ready', {
-            fontSize: '20px',
-            color: '#ffffff',
-        }).setOrigin(0.5);
-        this.sceneUI.readyButton.add([readyButton, readyButtonText]);
+        // Create ready players list container
+        this.readyListContainer = this.add.container(
+            this.cameras.main.centerX - 150, 
+            this.cameras.main.centerY - 100
+        );
         
-        // Set up interactivity with proper hit area
-        readyButton.setInteractive({ useHandCursor: true });
+        // Ready players list title
+        const readyListTitle = this.add.text(
+            0, 0,
+            'Ready Players:',
+            {
+                fontFamily: 'Arial',
+                fontSize: '20px',
+                color: '#ffffff',
+                fontStyle: 'bold'
+            }
+        );
+        this.readyListContainer.add(readyListTitle);
         
-        // Use the button's input events instead of the container
-        readyButton.on('pointerdown', () => {
+        // Initialize empty ready players list
+        this.readyPlayersList = [];
+        this.readyListContainer.setVisible(false);
+
+        // Create ready button highlight (pulsing effect)
+        this.readyButtonHighlight = this.add.sprite(
+            this.cameras.main.width - 150,
+            this.cameras.main.height - 50,
+            'button'
+        )
+        .setScale(1.2, 1.2)
+        .setTint(0x00ff00)
+        .setAlpha(0.5)
+        .setOrigin(0.5)
+        .setVisible(false);
+        
+        // Add a pulsing animation to the highlight
+        this.tweens.add({
+            targets: this.readyButtonHighlight,
+            alpha: { from: 0.2, to: 0.6 },
+            scale: { from: 1.15, to: 1.25 },
+            duration: 800,
+            yoyo: true,
+            repeat: -1
+        });
+
+        // Create the ready button after the highlight so it appears on top
+        this.readyButton = this.add.sprite(
+            this.cameras.main.width - 150,
+            this.cameras.main.height - 50,
+            'button'
+        )
+        .setScale(1.0)
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .setVisible(false);
+        
+        // Set up ready button click handler
+        this.readyButton.on('pointerdown', () => {
             if (this.room) {
                 // Send ready message to the server
                 this.room.send("ready");
                 console.log("Sent ready message to server");
                 
-                // Update button text and disable it permanently
-                readyButtonText.setText("Ready ✓");
-                readyButton.disableInteractive();
-                readyButton.setTint(0x666666); // Visual feedback that it's disabled
+                // Update button text and disable it
+                if (this.readyButtonText) {
+                    this.readyButtonText.setText("READY ✓");
+                }
+                this.readyButton?.disableInteractive();
+                this.readyButton?.setTint(0x666666); // Gray out to show it's disabled
                 
                 // Hide the button after a short delay
                 this.time.delayedCall(1000, () => {
-                    if (this.sceneUI.readyButton) {
-                        this.sceneUI.readyButton.setVisible(false);
-                    }
+                    this.hideReadyButton();
                 });
             }
         });
         
-        this.sceneUI.readyButton.setVisible(true);
-
+        // Ready button text
+        this.readyButtonText = this.add.text(
+            this.cameras.main.width - 150,
+            this.cameras.main.height - 50,
+            'READY',
+            {
+                fontFamily: 'Arial',
+                fontSize: '24px',
+                color: '#ffffff'
+            }
+        )
+        .setOrigin(0.5)
+        .setVisible(false);
+        
         // Create button to return to Main Menu
         this.sceneUI.returnButton = this.add.container(100, 50);
         
@@ -375,19 +428,69 @@ export class PokerGame extends Scene {
     }
 
     private showReadyButton() {
-        if (!this.sceneUI.readyButton) return;
+        if (!this.readyButton) return;
         
-        // Make sure the button is properly configured
-        if (!this.sceneUI.readyButton.visible)
-            this.sceneUI.readyButton.setVisible(true);
+        if (!this.readyButton.visible) {
+            this.readyButton.setVisible(true);
+            
+            // Show the button text
+            if (this.readyButtonText) {
+                this.readyButtonText.setVisible(true);
+            }
+        }
+
+        // Show and animate the highlight
+        if (this.readyButtonHighlight) {
+            this.readyButtonHighlight.setVisible(true);
+            
+            // Resume highlight animation if paused
+            const highlightTween = this.tweens.getTweensOf(this.readyButtonHighlight)[0];
+            if (highlightTween && highlightTween.isPaused()) {
+                highlightTween.resume();
+            }
+        }
+
+        // Show waiting message
+        if (this.waitingMessage) {
+            this.waitingMessage.setVisible(true);
+        }
+        
+        // Update and show ready players list
+        this.updateReadyPlayersList();
     }
 
     private hideReadyButton() {
-        if (!this.sceneUI.readyButton) return;
+        if (!this.readyButton) return;
         
-        // Make sure the button is properly configured
-        if (this.sceneUI.readyButton.visible)
-            this.sceneUI.readyButton.setVisible(false);
+        if (this.readyButton.visible) {
+            this.readyButton.setVisible(false);
+            
+            // Hide the button text
+            if (this.readyButtonText) {
+                this.readyButtonText.setVisible(false);
+            }
+        }
+
+        // Hide and pause the highlight animation
+        if (this.readyButtonHighlight) {
+            this.readyButtonHighlight.setVisible(false);
+            
+            // Pause highlight animation
+            const highlightTween = this.tweens.getTweensOf(this.readyButtonHighlight)[0];
+            if (highlightTween && !highlightTween.isPaused()) {
+                highlightTween.pause();
+            }
+        }
+
+        // Hide waiting message
+        if (this.waitingMessage) {
+            this.waitingMessage.setVisible(false);
+        }
+        
+        // Hide ready players list
+        if (this.readyListContainer) {
+            this.readyListContainer.setVisible(false);
+        }
     }
 
     private setupRoomListeners() {
@@ -408,6 +511,29 @@ export class PokerGame extends Scene {
                 sidepots: state.sidepots,
                 dealerIndex: state.dealerIndex
             };
+            
+            // Update the ready players list if we're in waiting phase
+            if (state.gamePhase === "waiting") {
+                this.updateReadyPlayersList();
+                
+                // Check if local player is ready and update UI accordingly
+                const localPlayerIndex = this.getLocalPlayerIndex();
+                if (localPlayerIndex >= 0 && state.players[localPlayerIndex]) {
+                    if (!state.players[localPlayerIndex].isReady) {
+                        this.showReadyButton();
+                    } else {
+                        // Player is ready, disable the button
+                        if (this.readyButton && this.readyButtonText) {
+                            this.readyButton.disableInteractive();
+                            this.readyButton.setTint(0x666666);
+                            this.readyButtonText.setText("READY ✓");
+                        }
+                    }
+                }
+            } else {
+                // Not in waiting phase, hide ready UI
+                this.hideReadyButton();
+            }
             
             // Update the game display with the new state
             this.updateGameDisplay();
@@ -435,6 +561,12 @@ export class PokerGame extends Scene {
             }
         });
         
+        // Listen for hand result event
+        this.room.onMessage("handResult", (data) => {
+            console.log("Hand result message received:", data);
+            this.showHandResult(data);
+        });
+        
         // Listen for player turn notification
         this.room.onMessage("playerTurn", (data) => {
             console.log("Player turn message received:", data);
@@ -447,12 +579,6 @@ export class PokerGame extends Scene {
             
             // Update the game display to highlight the active player
             this.updateGameDisplay();
-        });
-        
-        // Listen for hand result
-        this.room.onMessage("handResult", (result) => {
-            console.log("Hand result received:", result);
-            this.showHandResult(result);
         });
         
         // Handle errors
@@ -493,8 +619,8 @@ export class PokerGame extends Scene {
     }
 
     private updatePotDisplay(pot: number) {
-        if (this.sceneUI.potText) {
-            this.sceneUI.potText.setText(`Pot: ${pot}`);
+        if (this.potText) {
+            this.potText.setText(`Pot: ${pot}`);
         }
     }
 
@@ -693,7 +819,7 @@ export class PokerGame extends Scene {
     }
     private updateActionButtons(isMyTurn: boolean) {
         // If we don't have action buttons or disabled buttons, exit early
-        if (!this.sceneUI.actionButtons || !this.sceneUI.disabledButtons) return;
+        if (!this.actionButtons || !this.disabledButtons) return;
         
         console.log(`Updating action buttons, isMyTurn: ${isMyTurn}`);
         
@@ -705,8 +831,8 @@ export class PokerGame extends Scene {
         
         // Update each action button
         allActions.forEach(action => {
-            const actionButton = this.sceneUI.actionButtons?.[action as keyof typeof this.sceneUI.actionButtons];
-            const disabledButton = this.sceneUI.disabledButtons?.[`${action}Disabled` as keyof typeof this.sceneUI.disabledButtons];
+            const actionButton = this.actionButtons?.[action as keyof typeof this.actionButtons];
+            const disabledButton = this.disabledButtons?.[`${action}Disabled` as keyof typeof this.disabledButtons];
             
             if (actionButton && disabledButton) {
                 // If it's my turn and the action is valid, show the action button
@@ -827,30 +953,25 @@ export class PokerGame extends Scene {
     }
 
     private hideWaitingMessage() {
-        if (this.sceneUI.sceneMessages && this.sceneUI.sceneMessages.waitingMessage)
-            this.tweens.add({
-                targets: this.sceneUI.sceneMessages.waitingMessage,
-                alpha: 0,           // Fade to completely transparent
-                duration: 1000,     // Duration in milliseconds (1 second)
-                ease: 'Power2',     // Easing function (many options available)
-                delay: 2000,        // Optional: wait 2 seconds before starting fade
-                onComplete: function() {
-                    this.sceneUI.sceneMessages.waitingMessage.setVisible(false);
-                }
-            });
+        // Hide the waiting message
+        if (this.waitingMessage) {
+            this.waitingMessage.setVisible(false);
+        }
+        
+        // Hide the ready players list
+        if (this.readyListContainer) {
+            this.readyListContainer.setVisible(false);
+        }
     }
 
     private showGameStartedMessage() {
-        if (this.sceneUI.sceneMessages && this.sceneUI.sceneMessages.gameStartedMessage) {
-            this.sceneUI.sceneMessages.gameStartedMessage.setVisible(true);
-            this.tweens.add({
-                targets: this.sceneUI.sceneMessages.gameStartedMessage,
-                alpha: 0,
-                duration: 1000,
-                ease: 'Power2',
-                delay: 3000,
-                onComplete: function() {
-                    this.sceneUI.sceneMessages.gameStartedMessage.setVisible(false);
+        if (this.gameStartedMessage) {
+            this.gameStartedMessage.setVisible(true);
+            
+            // Auto-hide after a short delay
+            this.time.delayedCall(2000, () => {
+                if (this.gameStartedMessage) {
+                    this.gameStartedMessage.setVisible(false);
                 }
             });
         }
@@ -875,7 +996,106 @@ export class PokerGame extends Scene {
     }
 
     private showHandResult(result: any) {
-        // TODO Implement showing hand result
+        // Clear any existing result message
+        if (this.sceneUI.sceneMessages?.handResultMessage) {
+            this.sceneUI.sceneMessages.handResultMessage.destroy();
+        }
+        
+        // Create a new result message
+        const resultMessage = this.add.text(
+            this.cameras.main.width / 2,
+            this.cameras.main.height / 2 - 50,
+            result.message || "Hand complete",
+            {
+                fontFamily: 'Arial',
+                fontSize: '24px',
+                color: '#FFFFFF',
+                stroke: '#000000',
+                strokeThickness: 4,
+                align: 'center'
+            }
+        );
+        resultMessage.setOrigin(0.5);
+        resultMessage.setDepth(100);
+        
+        // Store the message in the scene UI
+        if (this.sceneUI.sceneMessages) {
+            this.sceneUI.sceneMessages.handResultMessage = resultMessage;
+        }
+        
+        // Highlight the winner
+        if (result.winner) {
+            const winnerIndex = this.gameState?.players.findIndex(p => p.id === result.winner);
+            if (winnerIndex !== undefined && winnerIndex >= 0) {
+                const position = this.getPlayerPosition(winnerIndex, this.gameState?.players.length || 0);
+                
+                // Create a highlight effect for the winner
+                const winnerHighlight = this.add.circle(
+                    position.x,
+                    position.y,
+                    70,
+                    0xFFD700, // Gold color
+                    0.5
+                );
+                winnerHighlight.setName(`winner-highlight-${winnerIndex}`);
+                
+                // Add a pulsing animation
+                this.tweens.add({
+                    targets: winnerHighlight,
+                    alpha: { from: 0.5, to: 0.8 },
+                    scale: { from: 1, to: 1.2 },
+                    duration: 1000,
+                    yoyo: true,
+                    repeat: 3,
+                    onComplete: () => {
+                        winnerHighlight.destroy();
+                    }
+                });
+                
+                // Add "WINNER" text
+                const winnerText = this.add.text(
+                    position.x,
+                    position.y - 80,
+                    "WINNER",
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: '20px',
+                        color: '#FFD700',
+                        stroke: '#000000',
+                        strokeThickness: 4
+                    }
+                );
+                winnerText.setOrigin(0.5);
+                winnerText.setName(`winner-text-${winnerIndex}`);
+                
+                // Fade out the winner text after a delay
+                this.time.delayedCall(4000, () => {
+                    this.tweens.add({
+                        targets: winnerText,
+                        alpha: 0,
+                        duration: 1000,
+                        onComplete: () => {
+                            winnerText.destroy();
+                        }
+                    });
+                });
+            }
+        }
+        
+        // Fade out the result message after a delay
+        this.time.delayedCall(5000, () => {
+            this.tweens.add({
+                targets: resultMessage,
+                alpha: 0,
+                duration: 1000,
+                onComplete: () => {
+                    resultMessage.destroy();
+                    
+                    // Show the ready button for the next round
+                    this.showReadyButton();
+                }
+            });
+        });
     }
 
     private updatePhaseDisplay(phase: string) {
@@ -901,8 +1121,8 @@ export class PokerGame extends Scene {
             this.sceneUI.readyButton.removeInteractive();
         }
         
-        if (this.sceneUI.actionButtons) {
-            Object.values(this.sceneUI.actionButtons).forEach(button => {
+        if (this.actionButtons) {
+            Object.values(this.actionButtons).forEach(button => {
                 if (button) button.removeInteractive();
             });
         }
@@ -1034,70 +1254,177 @@ export class PokerGame extends Scene {
         if (!this.gameState) return;
 
         const tokenScale = 0.5;
-        const tokenOffset = 40; // Base offset from player position
+        const tokenOffset = 50; // Increased offset from player position
+        const cardOffset = 30; // Offset to account for card display area
 
         // Calculate if this player has any special positions
         const isDealer = playerIndex === this.gameState.dealerIndex;
         const isSmallBlind = playerIndex === (this.gameState.dealerIndex + 1) % totalPlayers;
         const isBigBlind = playerIndex === (this.gameState.dealerIndex + 2) % totalPlayers;
 
-        // Calculate positions for each token type
-        const tokenPositions = {
-            dealer: { x: position.x - tokenOffset, y: position.y - tokenOffset },
-            smallBlind: { x: position.x + tokenOffset, y: position.y - tokenOffset },
-            bigBlind: { x: position.x + tokenOffset, y: position.y + tokenOffset }
+        // Get local player index to adjust positioning
+        const localPlayerIndex = this.getLocalPlayerIndex();
+        const isBottom = playerIndex === localPlayerIndex;
+        const isLeft = (playerIndex === (localPlayerIndex + 1) % totalPlayers) || 
+                       (playerIndex === (localPlayerIndex + 2) % totalPlayers && totalPlayers > 4);
+        const isTop = (playerIndex === (localPlayerIndex + Math.floor(totalPlayers / 2)) % totalPlayers) || 
+                      (playerIndex === (localPlayerIndex + Math.floor(totalPlayers / 2) - 1) % totalPlayers && totalPlayers > 4) ||
+                      (playerIndex === (localPlayerIndex + Math.floor(totalPlayers / 2) + 1) % totalPlayers && totalPlayers > 4);
+        const isRight = !isBottom && !isLeft && !isTop;
+
+        // Calculate positions for each token type based on player position
+        let tokenPositions = {
+            dealer: { x: 0, y: 0 },
+            smallBlind: { x: 0, y: 0 },
+            bigBlind: { x: 0, y: 0 }
         };
 
-        // Special case for 2 players where one player might be both dealer and big blind
-        if (totalPlayers === 2 && isDealer && isBigBlind) {
-            // Adjust positions to prevent overlap
-            tokenPositions.dealer.x = position.x - tokenOffset;
-            tokenPositions.dealer.y = position.y - tokenOffset;
-            tokenPositions.bigBlind.x = position.x + tokenOffset;
-            tokenPositions.bigBlind.y = position.y + tokenOffset;
+        if (isBottom) {
+            // Bottom player - tokens above cards
+            tokenPositions.dealer = { x: position.x - tokenOffset, y: position.y - cardOffset - 20 };
+            tokenPositions.smallBlind = { x: position.x, y: position.y - cardOffset - 20 };
+            tokenPositions.bigBlind = { x: position.x + tokenOffset, y: position.y - cardOffset - 20 };
+        } else if (isTop) {
+            // Top player - tokens below cards
+            tokenPositions.dealer = { x: position.x - tokenOffset, y: position.y + cardOffset + 20 };
+            tokenPositions.smallBlind = { x: position.x, y: position.y + cardOffset + 20 };
+            tokenPositions.bigBlind = { x: position.x + tokenOffset, y: position.y + cardOffset + 20 };
+        } else if (isLeft) {
+            // Left player - tokens to the right of cards
+            tokenPositions.dealer = { x: position.x + cardOffset + 20, y: position.y - tokenOffset };
+            tokenPositions.smallBlind = { x: position.x + cardOffset + 20, y: position.y };
+            tokenPositions.bigBlind = { x: position.x + cardOffset + 20, y: position.y + tokenOffset };
+        } else if (isRight) {
+            // Right player - tokens to the left of cards
+            tokenPositions.dealer = { x: position.x - cardOffset - 20, y: position.y - tokenOffset };
+            tokenPositions.smallBlind = { x: position.x - cardOffset - 20, y: position.y };
+            tokenPositions.bigBlind = { x: position.x - cardOffset - 20, y: position.y + tokenOffset };
+        }
+
+        // Special case for 2 players
+        if (totalPlayers === 2) {
+            // Ensure the tokens don't overlap when same player is dealer and big blind
+            if (isDealer && isBigBlind) {
+                tokenPositions.dealer.x -= 15;
+                tokenPositions.dealer.y -= 15;
+                tokenPositions.bigBlind.x += 15;
+                tokenPositions.bigBlind.y += 15;
+            }
         }
 
         // Display dealer token
         if (isDealer) {
-            const dealerToken = this.add.sprite(tokenPositions.dealer.x, tokenPositions.dealer.y, 'd-token')
+            const dealerToken = this.add.sprite(tokenPositions.dealer.x, tokenPositions.dealer.y, 'dealerToken')
                 .setScale(tokenScale)
                 .setName(`token-dealer-${playerIndex}`);
         }
 
         // Display small blind token
         if (isSmallBlind) {
-            const sbToken = this.add.sprite(tokenPositions.smallBlind.x, tokenPositions.smallBlind.y, 'sb-token')
+            const sbToken = this.add.sprite(tokenPositions.smallBlind.x, tokenPositions.smallBlind.y, 'smallBlindToken')
                 .setScale(tokenScale)
                 .setName(`token-sb-${playerIndex}`);
         }
 
         // Display big blind token
         if (isBigBlind) {
-            const bbToken = this.add.sprite(tokenPositions.bigBlind.x, tokenPositions.bigBlind.y, 'bb-token')
+            const bbToken = this.add.sprite(tokenPositions.bigBlind.x, tokenPositions.bigBlind.y, 'bigBlindToken')
                 .setScale(tokenScale)
                 .setName(`token-bb-${playerIndex}`);
+        }
+    }
+
+    // Add a method to update the ready players list
+    private updateReadyPlayersList() {
+        if (!this.gameState || !this.readyListContainer) return;
+
+        // Clear existing list entries
+        for (const text of this.readyPlayersList) {
+            text.destroy();
+        }
+        this.readyPlayersList = [];
+
+        // Re-create the list based on current state
+        let yOffset = 30;
+        const readyPlayers = this.gameState.players.filter(p => p && p.isReady);
+        const notReadyPlayers = this.gameState.players.filter(p => p && !p.isReady);
+        
+        // Add ready players (with checkmark)
+        readyPlayers.forEach((player, idx) => {
+            const readyText = this.add.text(
+                0, 
+                yOffset + (idx * 25),
+                `✓ ${player.name || 'Player ' + player.index}`,
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '18px',
+                    color: '#00ff00'
+                }
+            );
+            this.readyPlayersList.push(readyText);
+            this.readyListContainer?.add(readyText);
+        });
+        
+        // Add not ready players (with waiting icon)
+        notReadyPlayers.forEach((player, idx) => {
+            const notReadyText = this.add.text(
+                0, 
+                yOffset + (readyPlayers.length * 25) + (idx * 25),
+                `○ ${player.name || 'Player ' + player.index}`,
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '18px',
+                    color: '#cccccc'
+                }
+            );
+            this.readyPlayersList.push(notReadyText);
+            this.readyListContainer?.add(notReadyText);
+        });
+        
+        // Show the container if we have any players
+        if (this.gameState.players.filter(p => p).length > 0) {
+            this.readyListContainer.setVisible(true);
+        } else {
+            this.readyListContainer.setVisible(false);
         }
     }
 
     update(time: number, delta: number) {
         // Check if we're waiting for players
         if (this.gameState && this.gameState.gamePhase === "waiting") {
-            // Show waiting message if we have fewer than 2 players
-            if (this.gameState.players.length < 2 && 
-                this.sceneUI.sceneMessages && 
-                this.sceneUI.sceneMessages.waitingMessage) {
-                
-                this.sceneUI.sceneMessages.waitingMessage.setVisible(true);
-                
-                // Make sure the ready button is visible if it exists
-                if (this.sceneUI.readyButton) {
-                    this.sceneUI.readyButton.setVisible(true);
-                }
-            } else if (this.sceneUI.sceneMessages && 
-                      this.sceneUI.sceneMessages.waitingMessage) {
-                // Hide waiting message if we have enough players
-                this.sceneUI.sceneMessages.waitingMessage.setVisible(false);
+            // Update the ready players list
+            this.updateReadyPlayersList();
+            
+            // Get count of not ready players
+            const notReadyCount = this.gameState.players.filter(p => p && !p.isReady).length;
+            
+            // Show waiting message if we have players that aren't ready
+            if (notReadyCount > 0 && this.waitingMessage) {
+                this.waitingMessage.setText(`Waiting for ${notReadyCount} player${notReadyCount > 1 ? 's' : ''} to be ready...`);
+                this.waitingMessage.setVisible(true);
+            } else if (this.waitingMessage) {
+                // Hide waiting message if all players are ready
+                this.waitingMessage.setVisible(false);
             }
+            
+            // Show ready button if the player is not ready
+            const localPlayerIndex = this.getLocalPlayerIndex();
+            if (localPlayerIndex >= 0 && 
+                this.gameState.players[localPlayerIndex] && 
+                !this.gameState.players[localPlayerIndex].isReady) {
+                this.showReadyButton();
+            } else {
+                this.hideReadyButton();
+            }
+        } else {
+            // We're not in waiting phase, make sure waiting UI is hidden
+            if (this.waitingMessage) {
+                this.waitingMessage.setVisible(false);
+            }
+            if (this.readyListContainer) {
+                this.readyListContainer.setVisible(false);
+            }
+            this.hideReadyButton();
         }
         
         // Any other continuous updates can go here

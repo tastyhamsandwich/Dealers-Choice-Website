@@ -8,5 +8,6 @@ export const imageConfig = {
         contentType: 'image/png',
         validExtensions: ['jpg', 'jpeg', 'png', 'gif'],
         maxSizeInMB: 5,
+        aspectRatio: 1,
     }
 }; 

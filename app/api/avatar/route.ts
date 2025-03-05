@@ -7,7 +7,8 @@ export async function POST(request: Request) {
     try {
         const formData = await request.formData();
         const file = formData.get('avatar') as File;
-        
+        const username = formData.get('username') as string;
+
         if (!file) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
         }
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
 
         // Create unique filename with user ID for better organization
         const timestamp = Date.now();
-        const filename = `avatar-${timestamp}.${format}`;
+        const filename = `${username}-avatar-${timestamp}.${format}`;
 
         // Upload processed image to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase
@@ -86,6 +87,8 @@ export async function POST(request: Request) {
         if (updateError) {
             return NextResponse.json({ error: updateError.message }, { status: 500 });
         }
+
+        console.log(`Avatar successfully uploaded for ${username}.\nFilename: ${filename}\nPublic URL: ${publicUrl}`);
 
         return NextResponse.json({ 
             success: true, 

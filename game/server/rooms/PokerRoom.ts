@@ -448,6 +448,16 @@ export class PokerRoom extends Room<PokerGameState> {
 
   private handleWinnerByFold(winner: PlayerState) {
     winner.chips += this.state.pot;
+    
+    // Send a message to all clients about the winner
+    this.broadcast("handResult", {
+      winner: winner.id,
+      winnerName: winner.name,
+      amount: this.state.pot,
+      reason: "fold",
+      message: `${winner.name} wins ${this.state.pot} chips because all other players folded`
+    });
+    
     this.state.pot = 0;
     this.state.gamePhase = "waiting";
     
@@ -486,6 +496,17 @@ export class PokerRoom extends Room<PokerGameState> {
     const winner = this.state.players.find(p => p.id === winningHand.id);
     if (winner) {
       winner.chips += this.state.pot;
+      
+      // Send a message to all clients about the winner
+      this.broadcast("handResult", {
+        winner: winner.id,
+        winnerName: winner.name,
+        amount: this.state.pot,
+        reason: "showdown",
+        bestHand: winningHand.bestHand,
+        message: `${winner.name} wins ${this.state.pot} chips with ${winningHand.bestHand}`
+      });
+      
       this.state.pot = 0;
       this.state.gamePhase = "waiting";
       

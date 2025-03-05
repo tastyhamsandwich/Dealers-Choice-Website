@@ -14,13 +14,28 @@ export default function DashboardLayout({
     const { profile } = useAuth();
     const [showUpload, setShowUpload] = useState(false);
     const [imageError, setImageError] = useState(false);
+    const [isImageLoading, setIsImageLoading] = useState(true);
 
     // Debug log the avatar URL
     useEffect(() => {
         if (profile?.avatar_url) {
             console.log('Avatar URL:', profile.avatar_url);
+            // Reset error state when URL changes
+            setImageError(false);
+            setIsImageLoading(true);
         }
     }, [profile?.avatar_url]);
+
+    const handleImageLoad = () => {
+        setIsImageLoading(false);
+        setImageError(false);
+    };
+
+    const handleImageError = () => {
+        console.error('Failed to load avatar:', profile?.avatar_url);
+        setImageError(true);
+        setIsImageLoading(false);
+    };
 
     return (
         <div className="flex h-screen bg-gray-100">
@@ -36,19 +51,24 @@ export default function DashboardLayout({
                         >
                             {profile?.avatar_url && !imageError ? (
                                 <>
-                                    <Image
-                                        src={profile.avatar_url}
-                                        alt={profile.username || 'Profile'}
-                                        width={128}
-                                        height={128}
-                                        className="rounded-full object-cover border-4 border-[#4caf50] shadow-lg"
-                                        priority
-                                        onError={() => {
-                                            console.error('Failed to load avatar:', profile.avatar_url);
-                                            setImageError(true);
-                                        }}
-                                        unoptimized // Try without Next.js image optimization
-                                    />
+                                    <div className="relative w-32 h-32">
+                                        {isImageLoading && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-gray-600 rounded-full">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#4caf50] border-t-transparent"></div>
+                                            </div>
+                                        )}
+                                        <Image
+                                            src={profile.avatar_url}
+                                            alt={profile.username || 'Profile'}
+                                            width={128}
+                                            height={128}
+                                            className={`rounded-full object-cover border-4 border-[#4caf50] shadow-lg transition-opacity duration-200 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+                                            priority
+                                            onLoad={handleImageLoad}
+                                            onError={handleImageError}
+                                            unoptimized
+                                        />
+                                    </div>
                                     {/* Hover Overlay */}
                                     <div className={`absolute inset-0 flex items-center justify-center rounded-full bg-black bg-opacity-50 transition-opacity duration-200 ${showUpload ? 'opacity-100' : 'opacity-0'}`}>
                                         <span className="text-white text-sm">Change Avatar</span>
